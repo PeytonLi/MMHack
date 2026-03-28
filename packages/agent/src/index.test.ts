@@ -7,6 +7,7 @@ import {
   GradientRecipeDecisionAgent,
   HeuristicRecipeDecisionAgent,
   extractRecipeAssistantConstraints,
+  resolveRecipeAssistantConstraints,
 } from "./index";
 
 describe("HeuristicRecipeDecisionAgent", () => {
@@ -130,6 +131,56 @@ describe("GradientRecipeAssistantAgent", () => {
       maxCarbs: undefined,
       maxReadyTime: 20,
       minProtein: 15,
+      queryTerms: ["protein"],
+    });
+  });
+
+  it("extracts exact macro targets and avoid directives from freeform text", () => {
+    expect(extractRecipeAssistantConstraints("Find recipes with 20 grams of protein at least and avoid nuts.")).toEqual({
+      appliedConstraints: ["at least 20g protein", "exclude nuts"],
+      diets: [],
+      excludeIngredients: ["nuts"],
+      includeIngredients: [],
+      intolerances: [],
+      maxCarbs: undefined,
+      maxReadyTime: undefined,
+      minProtein: 20,
+      queryTerms: ["protein"],
+    });
+
+    expect(extractRecipeAssistantConstraints("Find recipes with less than 32 grams of carbs.")).toEqual({
+      appliedConstraints: ["under 32g carbs"],
+      diets: [],
+      excludeIngredients: [],
+      includeIngredients: [],
+      intolerances: [],
+      maxCarbs: 32,
+      maxReadyTime: undefined,
+      minProtein: undefined,
+      queryTerms: [],
+    });
+  });
+
+  it("resolves active constraints across chat history with later numeric overrides", () => {
+    expect(
+      resolveRecipeAssistantConstraints(
+        [
+          { role: "user", content: "Can you find recipes that have 30 grams of protein or more?" },
+          { role: "assistant", content: "None of the recipes meet the 30g protein requirement." },
+          { role: "user", content: "Avoid nuts." },
+          { role: "user", content: "Make it vegan." },
+        ],
+        "Find recipes with 20 grams of protein at least and less than 32 grams of carbs.",
+      ),
+    ).toEqual({
+      appliedConstraints: ["exclude nuts", "vegan", "at least 20g protein", "under 32g carbs"],
+      diets: ["vegan"],
+      excludeIngredients: ["nuts"],
+      includeIngredients: [],
+      intolerances: [],
+      maxCarbs: 32,
+      maxReadyTime: undefined,
+      minProtein: 20,
       queryTerms: ["protein"],
     });
   });

@@ -142,6 +142,16 @@ export function extractRecipeAssistantConstraints(message: string): RecipeAssist
   let minProtein: number | undefined;
   let maxCarbs: number | undefined;
 
+  const proteinTargetMatch =
+    lowered.match(/\b(?:at\s+least|minimum|min(?:imum)?(?:\s+of)?)\s+(\d+)\s*(?:g|grams?)\s+of\s+protein\b/i) ??
+    lowered.match(/\b(\d+)\s*(?:g|grams?)\s+of\s+protein\b(?:\s*(?:or\s+more|at\s+least|minimum|min(?:imum)?))?/i) ??
+    lowered.match(/\bprotein\b[^\d]{0,20}(\d+)\s*(?:g|grams?)\b/i);
+
+  const carbTargetMatch =
+    lowered.match(/\b(?:under|within|less than|fewer than|at most|max(?:imum)?(?:\s+of)?)\s+(\d+)\s*(?:g|grams?)\s+of\s+carbs?\b/i) ??
+    lowered.match(/\b(?:under|within|less than|fewer than|at most|max(?:imum)?(?:\s+of)?)\s+(\d+)\s*(?:g|grams?)\s+of\s+carbohydrates\b/i) ??
+    lowered.match(/\b(?:carbs?|carbohydrates)\b[^\d]{0,20}(?:under|within|less than|fewer than|at most|max(?:imum)?(?:\s+of)?)\s+(\d+)\s*(?:g|grams?)\b/i);
+
   if (/\bvegan\b/i.test(lowered)) {
     pushUnique(diets, "vegan");
     pushUnique(appliedConstraints, "vegan");
@@ -173,13 +183,20 @@ export function extractRecipeAssistantConstraints(message: string): RecipeAssist
     pushUnique(appliedConstraints, "under 30 minutes");
   }
 
-  if (/\bhigh protein\b/i.test(lowered) || /\bmore protein\b/i.test(lowered)) {
+  if (proteinTargetMatch) {
+    minProtein = Number(proteinTargetMatch[1]);
+    pushUnique(appliedConstraints, `at least ${minProtein}g protein`);
+    pushUnique(queryTerms, "protein");
+  } else if (/\bhigh protein\b/i.test(lowered) || /\bmore protein\b/i.test(lowered)) {
     minProtein = 15;
     pushUnique(appliedConstraints, "high protein");
     pushUnique(queryTerms, "protein");
   }
 
-  if (/\blow carb\b/i.test(lowered) || /\blower carb\b/i.test(lowered)) {
+  if (carbTargetMatch) {
+    maxCarbs = Number(carbTargetMatch[1]);
+    pushUnique(appliedConstraints, `under ${maxCarbs}g carbs`);
+  } else if (/\blow carb\b/i.test(lowered) || /\blower carb\b/i.test(lowered)) {
     maxCarbs = 25;
     pushUnique(appliedConstraints, "low carb");
   }
@@ -201,7 +218,7 @@ export function extractRecipeAssistantConstraints(message: string): RecipeAssist
     }
   }
 
-  for (const match of lowered.matchAll(/\b(?:without|no) ([a-z][a-z\s-]*?)(?=,|\.|$|\band\b|\bbut\b)/gi)) {
+  for (const match of lowered.matchAll(/\b(?:without|no|avoid) ([a-z][a-z\s-]*?)(?=,|\.|$|\band\b|\bbut\b)/gi)) {
     for (const ingredient of normalizeIngredientText(match[1])) {
       pushUnique(excludeIngredients, ingredient);
       pushUnique(appliedConstraints, `exclude ${ingredient}`);
@@ -219,6 +236,108 @@ export function extractRecipeAssistantConstraints(message: string): RecipeAssist
     minProtein,
     queryTerms,
   };
+}
+
+function removeMatchingConstraints(target: string[], pattern: RegExp): void {
+  for (let index = target.length - 1; index >= 0; index -= 1) {
+    if (pattern.test(target[index] ?? "")) {
+      target.splice(index, 1);
+    }
+  }
+}
+
+function mergeConstraintHints(
+  target: RecipeAssistantConstraintHints,
+  next: RecipeAssistantConstraintHints,
+): RecipeAssistantConstraintHints {
+  for (const diet of next.diets) {
+    pushUnique(target.diets, diet);
+  }
+
+  for (const ingredient of next.includeIngredients) {
+    pushUnique(target.includeIngredients, ingredient);
+  }
+
+  for (const ingredient of next.excludeIngredients) {
+    pushUnique(target.excludeIngredients, ingredient);
+  }
+
+  for (const intolerance of next.intolerances) {
+    pushUnique(target.intolerances, intolerance);
+  }
+
+  for (const queryTerm of next.queryTerms) {
+    pushUnique(target.queryTerms, queryTerm);
+  }
+
+  if (next.maxReadyTime !== undefined) {
+    target.maxReadyTime = next.maxReadyTime;
+    removeMatchingConstraints(target.appliedConstraints, /^under \d+ minutes$/);
+  }
+
+  if (next.minProtein !== undefined) {
+    target.minProtein = next.minProtein;
+    removeMatchingConstraints(target.appliedConstraints, /^(high protein|at least \d+g protein)$/);
+  }
+
+  if (next.maxCarbs !== undefined) {
+    target.maxCarbs = next.maxCarbs;
+    removeMatchingConstraints(target.appliedConstraints, /^(low carb|under \d+g carbs)$/);
+  }
+
+  for (const constraint of next.appliedConstraints) {
+    if (
+      target.maxReadyTime !== undefined &&
+      /^under \d+ minutes$/.test(constraint) &&
+      constraint !== `under ${target.maxReadyTime} minutes`
+    ) {
+      continue;
+    }
+
+    if (
+      target.minProtein !== undefined &&
+      /^(high protein|at least \d+g protein)$/.test(constraint) &&
+      constraint !== "high protein" &&
+      constraint !== `at least ${target.minProtein}g protein`
+    ) {
+      continue;
+    }
+
+    if (
+      target.maxCarbs !== undefined &&
+      /^(low carb|under \d+g carbs)$/.test(constraint) &&
+      constraint !== "low carb" &&
+      constraint !== `under ${target.maxCarbs}g carbs`
+    ) {
+      continue;
+    }
+
+    pushUnique(target.appliedConstraints, constraint);
+  }
+
+  return target;
+}
+
+export function resolveRecipeAssistantConstraints(
+  history: RecipeAssistantMessage[],
+  message: string,
+): RecipeAssistantConstraintHints {
+  const resolved: RecipeAssistantConstraintHints = {
+    appliedConstraints: [],
+    diets: [],
+    excludeIngredients: [],
+    includeIngredients: [],
+    intolerances: [],
+    queryTerms: [],
+  };
+
+  const userMessages = [...history.filter((entry) => entry.role === "user").map((entry) => entry.content), message];
+
+  for (const entry of userMessages) {
+    mergeConstraintHints(resolved, extractRecipeAssistantConstraints(entry));
+  }
+
+  return resolved;
 }
 
 function scoreRecipeForBand(recipe: RecipeCandidate, band: RipenessAnalysis["ripenessBand"]): number {
@@ -270,6 +389,7 @@ function buildAssistantPrompt(input: RecipeAssistantInput): string {
     `Ripeness band: ${input.analysis.ripenessBand}`,
     `Ripeness reasoning: ${input.analysis.reasoning}`,
     `Applied constraints: ${input.appliedConstraints.length > 0 ? input.appliedConstraints.join(", ") : "none"}`,
+    "If the conversation history conflicts with the active constraints, prioritize the active constraints.",
     "Use only the provided candidate recipes. Do not invent new recipe titles, URLs, nutrition, prep time, or servings.",
     "If no candidate fits well, return an empty picks array and explain how the user could relax the request.",
     "Return only JSON in the format {\"reply\":\"...\",\"appliedConstraints\":[\"...\"],\"picks\":[{\"id\":123,\"reason\":\"...\"}]}",

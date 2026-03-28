@@ -8,8 +8,8 @@ import {
   GradientRecipeAssistantAgent,
   GradientRecipeDecisionAgent,
   HeuristicRecipeDecisionAgent,
-  extractRecipeAssistantConstraints,
   isAssistantUnavailableError,
+  resolveRecipeAssistantConstraints,
   type RecipeAssistantAgent,
   type RecipeDecisionAgent,
 } from "@mmhack/agent";
@@ -119,7 +119,7 @@ export function createApiApp(dependencies: ApiDependencies = createLiveDependenc
   app.post("/api/recipe-assistant", async (request, response, next) => {
     try {
       const body = recipeAssistantRequestSchema.parse(request.body);
-      const hints = extractRecipeAssistantConstraints(body.message);
+      const hints = resolveRecipeAssistantConstraints(body.history, body.message);
       const candidates = await dependencies.recipes.searchRecipes({
         diets: hints.diets,
         excludeIngredients: hints.excludeIngredients,

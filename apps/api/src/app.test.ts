@@ -265,6 +265,69 @@ describe("api app", () => {
     );
   });
 
+  it("merges assistant history into active search constraints and lets later numeric targets win", async () => {
+    const searchRecipes = vi.fn(async () => [{ id: 9, title: "Vegan Banana Protein Bowl" }]);
+    const app = createApiApp({
+      assistant: {
+        respond: vi.fn(async () => ({
+          appliedConstraints: ["exclude nuts", "vegan", "at least 20g protein", "under 32g carbs"],
+          recipes: [
+            {
+              id: 9,
+              reason: "This candidate stays within the active vegan, nut-free, protein, and carb targets.",
+              ripenessFit: "overripe",
+              title: "Vegan Banana Protein Bowl",
+            },
+          ],
+          reply: "I found the best grounded match for the updated constraints.",
+          status: "ok",
+        })),
+      },
+      agent: { probe: vi.fn(async () => ({ configured: true, ok: true, provider: "heuristic-agent" })), selectRecommendations: vi.fn() },
+      gemini: { analyzeRipeness: vi.fn(), probe: vi.fn() },
+      recipes: { probe: vi.fn(), searchRecipes },
+    });
+
+    const response = await request(app).post("/api/recipe-assistant").send({
+      analysis: {
+        confidence: "high",
+        fruitName: "banana",
+        reasoning: "Heavily freckled peel and very sweet aroma.",
+        ripenessBand: "overripe",
+        ripenessScore: 9,
+        status: "ok",
+        visibleSignals: ["brown freckles"],
+      },
+      fruitName: "banana",
+      history: [
+        { content: "Can you find recipes that have 30 grams of protein or more?", role: "user" },
+        { content: "None of the recipes meet the 30g protein requirement.", role: "assistant" },
+        { content: "Avoid nuts.", role: "user" },
+        { content: "Make it vegan.", role: "user" },
+      ],
+      message: "Find recipes with 20 grams of protein at least and less than 32 grams of carbs.",
+    });
+
+    expect(response.status).toBe(200);
+    expect(searchRecipes).toHaveBeenCalledWith({
+      diets: ["vegan"],
+      excludeIngredients: ["nuts"],
+      fruitName: "banana",
+      includeIngredients: [],
+      intolerances: [],
+      limit: 8,
+      maxCarbs: 32,
+      maxReadyTime: undefined,
+      minProtein: 20,
+      queryTerms: ["protein"],
+      ripenessBand: "overripe",
+    });
+    expect(response.body).toMatchObject({
+      appliedConstraints: ["exclude nuts", "vegan", "at least 20g protein", "under 32g carbs"],
+      status: "ok",
+    });
+  });
+
   it("returns assistant_unavailable instead of a 500 when chat is down", async () => {
     const app = createApiApp({
       assistant: {

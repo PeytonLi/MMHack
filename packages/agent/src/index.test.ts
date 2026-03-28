@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { vi } from "vitest";
 
-import { FallbackRecipeDecisionAgent, GradientRecipeDecisionAgent, HeuristicRecipeDecisionAgent } from "./index";
+import {
+  FallbackRecipeDecisionAgent,
+  GradientRecipeAssistantAgent,
+  GradientRecipeDecisionAgent,
+  HeuristicRecipeDecisionAgent,
+  extractRecipeAssistantConstraints,
+} from "./index";
 
 describe("HeuristicRecipeDecisionAgent", () => {
   it("prefers overripe banana recipes such as bread and smoothies", async () => {
@@ -109,6 +115,70 @@ describe("GradientRecipeDecisionAgent", () => {
       }),
     ).resolves.toMatchObject({
       recipes: [{ reason: "Banana bread uses overripe bananas well.", title: "Banana Bread" }],
+    });
+  });
+});
+
+describe("GradientRecipeAssistantAgent", () => {
+  it("extracts common assistant constraints from freeform text", () => {
+    expect(extractRecipeAssistantConstraints("Make it vegan, high protein, under 20 minutes, and without nuts.")).toEqual({
+      appliedConstraints: ["vegan", "under 20 minutes", "high protein", "exclude nuts"],
+      diets: ["vegan"],
+      excludeIngredients: ["nuts"],
+      includeIngredients: [],
+      intolerances: [],
+      maxCarbs: undefined,
+      maxReadyTime: 20,
+      minProtein: 15,
+      queryTerms: ["protein"],
+    });
+  });
+
+  it("maps grounded assistant replies back to recipe recommendations", async () => {
+    const agent = new GradientRecipeAssistantAgent(
+      "do-key",
+      "llama3.3-70b-instruct",
+      async () =>
+        new Response(
+          JSON.stringify({
+            choices: [
+              {
+                message: {
+                  content: JSON.stringify({
+                    reply: "This one is quicker and fits the high-protein request better.",
+                    appliedConstraints: ["high protein", "under 30 minutes"],
+                    picks: [{ id: 2, reason: "This candidate is quicker and higher in protein." }],
+                  }),
+                },
+              },
+            ],
+          }),
+          { status: 200 },
+        ),
+    );
+
+    await expect(
+      agent.respond({
+        analysis: {
+          confidence: "high",
+          fruitName: "banana",
+          reasoning: "Mostly yellow peel with a few freckles.",
+          ripenessBand: "ripe",
+          ripenessScore: 6,
+          visibleSignals: ["yellow peel"],
+        },
+        appliedConstraints: ["high protein", "under 30 minutes"],
+        candidates: [
+          { id: 1, title: "Banana Bread" },
+          { id: 2, title: "Banana Oat Protein Pancakes" },
+        ],
+        history: [{ role: "assistant", content: "How should I refine these?" }],
+        message: "Make it high protein and under 30 minutes.",
+      }),
+    ).resolves.toMatchObject({
+      appliedConstraints: ["high protein", "under 30 minutes"],
+      reply: "This one is quicker and fits the high-protein request better.",
+      recipes: [{ title: "Banana Oat Protein Pancakes" }],
     });
   });
 });

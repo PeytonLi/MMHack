@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { AlertTriangle, ArrowLeft, ChefHat, Clock, Users, ExternalLink, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BackendRecipe, FreshnessAnalysis } from '@/types/freshness';
+import { RecipeAssistant } from '@/components/RecipeAssistant';
 import {
   getFreshnessColor,
   getFreshnessLabel,
@@ -255,6 +256,16 @@ export function ResultScreen({ analysis, image, onReset }: ResultScreenProps) {
       <Button onClick={onReset} variant="outline" className="w-full mt-2">
         Scan Another Item
       </Button>
+
+      {analysis.status === 'ok' && (
+        <RecipeAssistant
+          analysis={analysis}
+          onApplyRecipes={(assistantRecipes) => {
+            setRecipes(assistantRecipes);
+            setRecipeError(null);
+          }}
+        />
+      )}
     </div>
   );
 }

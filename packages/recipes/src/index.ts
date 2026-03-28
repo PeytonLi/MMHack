@@ -1,8 +1,16 @@
 import { probeStatusSchema, recipeCandidateSchema, type ProbeStatus, type RecipeCandidate, type RipenessBand, type SupportedSku } from "@mmhack/shared";
 
 export type RecipeSearchInput = {
+  diets?: string[];
+  excludeIngredients?: string[];
   fruitName: SupportedSku;
+  includeIngredients?: string[];
   limit?: number;
+  intolerances?: string[];
+  maxCarbs?: number;
+  maxReadyTime?: number;
+  minProtein?: number;
+  queryTerms?: string[];
   ripenessBand?: RipenessBand;
 };
 
@@ -70,7 +78,12 @@ export class SpoonacularRecipeProvider implements RecipeProvider {
     }
 
     const limit = input.limit ?? 8;
-    const queries = QUERY_HINTS[input.fruitName]?.[input.ripenessBand ?? "ripe"] ?? [input.fruitName];
+    const baseQueries = QUERY_HINTS[input.fruitName]?.[input.ripenessBand ?? "ripe"] ?? [input.fruitName];
+    const assistantQuery =
+      input.queryTerms && input.queryTerms.length > 0
+        ? `${input.fruitName} ${input.queryTerms.join(" ")}`
+        : null;
+    const queries = assistantQuery ? [assistantQuery, ...baseQueries] : baseQueries;
     const dedupedRecipes = new Map<number, RecipeCandidate>();
 
     for (const query of queries) {
@@ -82,6 +95,34 @@ export class SpoonacularRecipeProvider implements RecipeProvider {
         query,
         sort: "popularity",
       });
+
+      if (input.diets && input.diets.length > 0) {
+        searchParams.set("diet", input.diets.join(","));
+      }
+
+      if (input.intolerances && input.intolerances.length > 0) {
+        searchParams.set("intolerances", input.intolerances.join(","));
+      }
+
+      if (input.includeIngredients && input.includeIngredients.length > 0) {
+        searchParams.set("includeIngredients", input.includeIngredients.join(","));
+      }
+
+      if (input.excludeIngredients && input.excludeIngredients.length > 0) {
+        searchParams.set("excludeIngredients", input.excludeIngredients.join(","));
+      }
+
+      if (input.maxReadyTime) {
+        searchParams.set("maxReadyTime", String(input.maxReadyTime));
+      }
+
+      if (input.minProtein) {
+        searchParams.set("minProtein", String(input.minProtein));
+      }
+
+      if (input.maxCarbs) {
+        searchParams.set("maxCarbs", String(input.maxCarbs));
+      }
 
       const response = await this.fetcher(`${this.baseUrl}/recipes/complexSearch?${searchParams.toString()}`);
 

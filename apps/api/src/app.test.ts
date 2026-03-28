@@ -1,12 +1,14 @@
 import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 
+import { AssistantUnavailableError } from "@mmhack/agent";
 import { GeminiQuotaError } from "@mmhack/ai";
 import { createApiApp } from "./app";
 
 describe("api app", () => {
   it("returns a health response", async () => {
     const app = createApiApp({
+      assistant: { respond: vi.fn() },
       agent: { probe: vi.fn(async () => ({ configured: true, ok: true, provider: "heuristic-agent" })), selectRecommendations: vi.fn() },
       gemini: { analyzeRipeness: vi.fn(), probe: vi.fn() },
       recipes: { probe: vi.fn(), searchRecipes: vi.fn() },
@@ -20,6 +22,7 @@ describe("api app", () => {
 
   it("returns a foundational ripeness result", async () => {
     const app = createApiApp({
+      assistant: { respond: vi.fn() },
       agent: { probe: vi.fn(async () => ({ configured: true, ok: true, provider: "heuristic-agent" })), selectRecommendations: vi.fn() },
       gemini: {
         analyzeRipeness: vi.fn(async () => ({
@@ -55,6 +58,7 @@ describe("api app", () => {
     const analyzeRipeness = vi.fn();
     const searchRecipes = vi.fn(async () => [{ id: 1, title: "Banana Bread" }]);
     const app = createApiApp({
+      assistant: { respond: vi.fn() },
       agent: {
         probe: vi.fn(async () => ({ configured: true, ok: true, provider: "digitalocean-gradient" })),
         selectRecommendations: vi.fn(async () => ({
@@ -112,6 +116,7 @@ describe("api app", () => {
     const selectRecommendations = vi.fn();
     const analyzeRipeness = vi.fn();
     const app = createApiApp({
+      assistant: { respond: vi.fn() },
       agent: { probe: vi.fn(async () => ({ configured: true, ok: true, provider: "heuristic-agent" })), selectRecommendations },
       gemini: {
         analyzeRipeness,
@@ -145,6 +150,7 @@ describe("api app", () => {
 
   it("returns a structured Gemini quota error", async () => {
     const app = createApiApp({
+      assistant: { respond: vi.fn() },
       agent: { probe: vi.fn(async () => ({ configured: true, ok: true, provider: "heuristic-agent" })), selectRecommendations: vi.fn() },
       gemini: {
         analyzeRipeness: vi.fn(async () => {
@@ -172,6 +178,7 @@ describe("api app", () => {
 
   it("rejects invalid requests", async () => {
     const app = createApiApp({
+      assistant: { respond: vi.fn() },
       agent: { probe: vi.fn(async () => ({ configured: true, ok: true, provider: "heuristic-agent" })), selectRecommendations: vi.fn() },
       gemini: { analyzeRipeness: vi.fn(), probe: vi.fn() },
       recipes: { probe: vi.fn(), searchRecipes: vi.fn() },
@@ -187,6 +194,7 @@ describe("api app", () => {
 
   it("exposes a Gradient probe route", async () => {
     const app = createApiApp({
+      assistant: { respond: vi.fn() },
       agent: { probe: vi.fn(async () => ({ configured: true, ok: true, provider: "digitalocean-gradient" })), selectRecommendations: vi.fn() },
       gemini: { analyzeRipeness: vi.fn(), probe: vi.fn() },
       recipes: { probe: vi.fn(), searchRecipes: vi.fn() },
@@ -196,5 +204,98 @@ describe("api app", () => {
 
     expect(response.status).toBe(200);
     expect(response.body.provider).toBe("digitalocean-gradient");
+  });
+
+  it("returns assistant-guided recipe updates", async () => {
+    const respond = vi.fn(async () => ({
+      appliedConstraints: ["high protein", "under 30 minutes"],
+      recipes: [
+        {
+          id: 2,
+          reason: "This is the best grounded match for a higher-protein quick banana recipe.",
+          ripenessFit: "ripe",
+          title: "Banana Oat Protein Pancakes",
+        },
+      ],
+      reply: "I found a quicker, higher-protein option for this banana.",
+      status: "ok",
+    }));
+    const searchRecipes = vi.fn(async () => [{ id: 2, title: "Banana Oat Protein Pancakes" }]);
+    const app = createApiApp({
+      assistant: { respond },
+      agent: { probe: vi.fn(async () => ({ configured: true, ok: true, provider: "heuristic-agent" })), selectRecommendations: vi.fn() },
+      gemini: { analyzeRipeness: vi.fn(), probe: vi.fn() },
+      recipes: { probe: vi.fn(), searchRecipes },
+    });
+
+    const response = await request(app).post("/api/recipe-assistant").send({
+      analysis: {
+        confidence: "high",
+        fruitName: "banana",
+        reasoning: "Mostly yellow peel with a few freckles.",
+        ripenessBand: "ripe",
+        ripenessScore: 6,
+        status: "ok",
+        visibleSignals: ["yellow peel"],
+      },
+      fruitName: "banana",
+      history: [{ content: "Can you make it high protein?", role: "user" }],
+      message: "Make it high protein and under 30 minutes.",
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      appliedConstraints: ["high protein", "under 30 minutes"],
+      reply: "I found a quicker, higher-protein option for this banana.",
+      status: "ok",
+    });
+    expect(searchRecipes).toHaveBeenCalledWith(
+      expect.objectContaining({
+        fruitName: "banana",
+        maxReadyTime: 30,
+        minProtein: 15,
+        ripenessBand: "ripe",
+      }),
+    );
+    expect(respond).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appliedConstraints: ["under 30 minutes", "high protein"],
+        message: "Make it high protein and under 30 minutes.",
+      }),
+    );
+  });
+
+  it("returns assistant_unavailable instead of a 500 when chat is down", async () => {
+    const app = createApiApp({
+      assistant: {
+        respond: vi.fn(async () => {
+          throw new AssistantUnavailableError("Recipe assistant is temporarily unavailable. Try again in a bit.");
+        }),
+      },
+      agent: { probe: vi.fn(async () => ({ configured: true, ok: true, provider: "heuristic-agent" })), selectRecommendations: vi.fn() },
+      gemini: { analyzeRipeness: vi.fn(), probe: vi.fn() },
+      recipes: { probe: vi.fn(), searchRecipes: vi.fn(async () => [{ id: 2, title: "Banana Oat Protein Pancakes" }]) },
+    });
+
+    const response = await request(app).post("/api/recipe-assistant").send({
+      analysis: {
+        confidence: "high",
+        fruitName: "banana",
+        reasoning: "Mostly yellow peel with a few freckles.",
+        ripenessBand: "ripe",
+        ripenessScore: 6,
+        status: "ok",
+        visibleSignals: ["yellow peel"],
+      },
+      fruitName: "banana",
+      history: [],
+      message: "Make it vegan.",
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      message: "Recipe assistant is temporarily unavailable. Try again in a bit.",
+      status: "assistant_unavailable",
+    });
   });
 });

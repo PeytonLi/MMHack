@@ -2,12 +2,14 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { ResultScreen } from '@/components/ResultScreen';
 
-const { getRecipeRecommendations } = vi.hoisted(() => ({
+const { getRecipeRecommendations, sendRecipeAssistantMessage } = vi.hoisted(() => ({
   getRecipeRecommendations: vi.fn(),
+  sendRecipeAssistantMessage: vi.fn(),
 }));
 
 vi.mock('@/lib/api', () => ({
   getRecipeRecommendations,
+  sendRecipeAssistantMessage,
 }));
 
 describe('ResultScreen', () => {

@@ -155,4 +155,42 @@ describe("SpoonacularRecipeProvider", () => {
 
     expect(fetcher).toHaveBeenCalledTimes(3);
   });
+
+  it("maps assistant search filters into Spoonacular query params", async () => {
+    const seenQueries: string[] = [];
+    const fetcher = vi.fn(async (input: URL | RequestInfo) => {
+      const url = new URL(String(input));
+      seenQueries.push(url.searchParams.get("query") ?? "");
+
+      expect(url.searchParams.get("diet")).toBe("vegan");
+      expect(url.searchParams.get("includeIngredients")).toBe("oats");
+      expect(url.searchParams.get("excludeIngredients")).toBe("peanut");
+      expect(url.searchParams.get("maxReadyTime")).toBe("30");
+      expect(url.searchParams.get("minProtein")).toBe("15");
+
+      return new Response(
+        JSON.stringify({
+          results: [],
+        }),
+        { status: 200 },
+      );
+    });
+
+    const provider = new SpoonacularRecipeProvider("test-key", fetcher);
+
+    await expect(
+      provider.searchRecipes({
+        diets: ["vegan"],
+        excludeIngredients: ["peanut"],
+        fruitName: "banana",
+        includeIngredients: ["oats"],
+        limit: 1,
+        maxReadyTime: 30,
+        minProtein: 15,
+        queryTerms: ["protein"],
+      }),
+    ).resolves.toEqual([]);
+
+    expect(seenQueries[0]).toBe("banana protein");
+  });
 });

@@ -120,6 +120,37 @@ export const recipeApiResponseSchema = z.discriminatedUnion("status", [
   fruitMismatchAnalysisSchema,
 ]);
 
+export const recipeAssistantMessageRoleSchema = z.enum(["assistant", "user"]);
+
+export const recipeAssistantMessageSchema = z.object({
+  content: z.string().min(1),
+  role: recipeAssistantMessageRoleSchema,
+});
+
+export const recipeAssistantRequestSchema = z.object({
+  analysis: ripenessAnalysisSchema,
+  fruitName: supportedSkuSchema,
+  history: z.array(recipeAssistantMessageSchema).max(12),
+  message: z.string().min(1),
+});
+
+export const recipeAssistantSuccessResponseSchema = z.object({
+  appliedConstraints: z.array(z.string()).default([]),
+  recipes: z.array(recipeRecommendationSchema).max(3),
+  reply: z.string().min(1),
+  status: z.literal("ok"),
+});
+
+export const recipeAssistantUnavailableResponseSchema = z.object({
+  message: z.string().min(1),
+  status: z.literal("assistant_unavailable"),
+});
+
+export const recipeAssistantResponseSchema = z.discriminatedUnion("status", [
+  recipeAssistantSuccessResponseSchema,
+  recipeAssistantUnavailableResponseSchema,
+]);
+
 export const probeStatusSchema = z.object({
   configured: z.boolean(),
   ok: z.boolean(),
@@ -170,6 +201,12 @@ export type RecipeCandidate = z.infer<typeof recipeCandidateSchema>;
 export type RecipeRecommendation = z.infer<typeof recipeRecommendationSchema>;
 export type RecipeResponse = z.infer<typeof recipeResponseSchema>;
 export type RecipeApiResponse = z.infer<typeof recipeApiResponseSchema>;
+export type RecipeAssistantMessageRole = z.infer<typeof recipeAssistantMessageRoleSchema>;
+export type RecipeAssistantMessage = z.infer<typeof recipeAssistantMessageSchema>;
+export type RecipeAssistantRequest = z.infer<typeof recipeAssistantRequestSchema>;
+export type RecipeAssistantSuccessResponse = z.infer<typeof recipeAssistantSuccessResponseSchema>;
+export type RecipeAssistantUnavailableResponse = z.infer<typeof recipeAssistantUnavailableResponseSchema>;
+export type RecipeAssistantResponse = z.infer<typeof recipeAssistantResponseSchema>;
 export type ProbeStatus = z.infer<typeof probeStatusSchema>;
 export type QuotaErrorResponse = z.infer<typeof quotaErrorResponseSchema>;
 

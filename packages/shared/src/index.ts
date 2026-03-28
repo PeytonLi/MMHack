@@ -17,12 +17,14 @@ export const pricingBands = [
   { label: "discard", minScore: 1, maxScore: 2, markdownPercent: 100 },
 ] as const;
 export const RIPENESS_BANDS = ["underripe", "firm_ripe", "ripe", "very_ripe", "overripe"] as const;
+export const ANALYSIS_STATUSES = ["ok", "fruit_mismatch"] as const;
 
 export const supportedSkuSchema = z.enum(SUPPORTED_SKUS);
 export const confidenceSchema = z.enum(CONFIDENCE_LEVELS);
 export const actionTypeSchema = z.enum(ACTION_TYPES);
 export const voriOperationSchema = z.enum(VORI_OPERATIONS);
 export const ripenessBandSchema = z.enum(RIPENESS_BANDS);
+export const analysisStatusSchema = z.enum(ANALYSIS_STATUSES);
 
 export const freshnessAnalysisSchema = z.object({
   confidence: confidenceSchema,
@@ -52,8 +54,31 @@ export const ripenessModelPayloadSchema = z.object({
   visibleSignals: z.array(z.string()).default([]),
 });
 
+export const fruitMismatchModelPayloadSchema = z.object({
+  confidence: confidenceSchema,
+  detectedFruit: supportedSkuSchema.nullable(),
+  reasoning: z.string().min(1),
+  selectedFruit: supportedSkuSchema,
+  visibleSignals: z.array(z.string()).default([]),
+});
+
 export const ripenessAnalysisSchema = ripenessModelPayloadSchema.extend({
   ripenessBand: ripenessBandSchema,
+  status: z.literal("ok"),
+});
+
+export const fruitMismatchAnalysisSchema = fruitMismatchModelPayloadSchema.extend({
+  status: z.literal("fruit_mismatch"),
+});
+
+export const ripenessAnalysisResultSchema = z.discriminatedUnion("status", [
+  ripenessAnalysisSchema,
+  fruitMismatchAnalysisSchema,
+]);
+
+export const recipeRequestSchema = z.object({
+  analysis: ripenessAnalysisResultSchema,
+  fruitName: supportedSkuSchema,
 });
 
 export const recipeCandidateSchema = z.object({
@@ -71,6 +96,7 @@ export const recipeRecommendationSchema = recipeCandidateSchema.extend({
 });
 
 export const recipeResponseSchema = z.object({
+  status: z.literal("ok"),
   fruitName: supportedSkuSchema,
   reasoning: z.string().min(1),
   recipes: z.array(recipeRecommendationSchema).min(1).max(3),
@@ -78,10 +104,22 @@ export const recipeResponseSchema = z.object({
   ripenessScore: z.number().int().min(1).max(10),
 });
 
+export const recipeApiResponseSchema = z.discriminatedUnion("status", [
+  recipeResponseSchema,
+  fruitMismatchAnalysisSchema,
+]);
+
 export const probeStatusSchema = z.object({
   configured: z.boolean(),
   ok: z.boolean(),
   provider: z.string().min(1),
+});
+
+export const quotaErrorResponseSchema = z.object({
+  error: z.literal("quota_exhausted"),
+  message: z.string().min(1),
+  provider: z.literal("gemini"),
+  retryAfterSeconds: z.number().int().positive().optional(),
 });
 
 export const auditRecordSchema = z.object({
@@ -108,13 +146,20 @@ export type FreshnessAnalysis = z.infer<typeof freshnessAnalysisSchema>;
 export type PricingAction = z.infer<typeof pricingActionSchema>;
 export type AuditRecord = z.infer<typeof auditRecordSchema>;
 export type RipenessBand = z.infer<typeof ripenessBandSchema>;
+export type AnalysisStatus = z.infer<typeof analysisStatusSchema>;
 export type FruitImageRequest = z.infer<typeof fruitImageRequestSchema>;
+export type RecipeRequest = z.infer<typeof recipeRequestSchema>;
 export type RipenessModelPayload = z.infer<typeof ripenessModelPayloadSchema>;
+export type FruitMismatchModelPayload = z.infer<typeof fruitMismatchModelPayloadSchema>;
 export type RipenessAnalysis = z.infer<typeof ripenessAnalysisSchema>;
+export type FruitMismatchAnalysis = z.infer<typeof fruitMismatchAnalysisSchema>;
+export type RipenessAnalysisResult = z.infer<typeof ripenessAnalysisResultSchema>;
 export type RecipeCandidate = z.infer<typeof recipeCandidateSchema>;
 export type RecipeRecommendation = z.infer<typeof recipeRecommendationSchema>;
 export type RecipeResponse = z.infer<typeof recipeResponseSchema>;
+export type RecipeApiResponse = z.infer<typeof recipeApiResponseSchema>;
 export type ProbeStatus = z.infer<typeof probeStatusSchema>;
+export type QuotaErrorResponse = z.infer<typeof quotaErrorResponseSchema>;
 
 export function isLowConfidence(confidence: ConfidenceLevel): boolean {
   return confidence === "low";

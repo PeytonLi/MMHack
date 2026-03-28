@@ -110,6 +110,7 @@ function buildResponse(
   recipes: RecipeRecommendation[],
 ): RecipeResponse {
   return recipeResponseSchema.parse({
+    status: "ok",
     fruitName: analysis.fruitName,
     reasoning: analysis.reasoning,
     recipes,

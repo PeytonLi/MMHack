@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildRipenessPrompt, extractJsonObject, GeminiRipenessClient, parseRipenessAnalysis } from "./index";
+import { buildRipenessPrompt, extractJsonObject, GeminiQuotaError, GeminiRipenessClient, parseRipenessAnalysis } from "./index";
 
 describe("parseRipenessAnalysis", () => {
   it("accepts valid structured payloads", () => {
@@ -13,8 +13,29 @@ describe("parseRipenessAnalysis", () => {
       visibleSignals: ["brown peel"],
     });
 
-    expect(result.ripenessScore).toBe(9);
-    expect(result.ripenessBand).toBe("overripe");
+    expect(result).toMatchObject({
+      fruitName: "banana",
+      ripenessBand: "overripe",
+      ripenessScore: 9,
+      status: "ok",
+    });
+  });
+
+  it("accepts fruit mismatch payloads without ripeness fields", () => {
+    const result = parseRipenessAnalysis({
+      confidence: "high",
+      detectedFruit: "tomato",
+      reasoning: "The selected fruit is banana, but the image shows a green tomato.",
+      selectedFruit: "banana",
+      status: "fruit_mismatch",
+      visibleSignals: ["round shape", "green skin"],
+    });
+
+    expect(result).toMatchObject({
+      detectedFruit: "tomato",
+      selectedFruit: "banana",
+      status: "fruit_mismatch",
+    });
   });
 
   it("rejects scores outside the allowed range", () => {
@@ -37,6 +58,7 @@ describe("buildRipenessPrompt", () => {
 
     expect(prompt).toContain("apple");
     expect(prompt).toContain("Return only JSON");
+    expect(prompt).toContain("fruit_mismatch");
   });
 });
 
@@ -83,6 +105,64 @@ describe("GeminiRipenessClient", () => {
       fruitName: "banana",
       ripenessBand: "very_ripe",
       ripenessScore: 8,
+      status: "ok",
     });
+  });
+
+  it("maps fruit mismatch model output into a mismatch analysis", async () => {
+    const client = new GeminiRipenessClient("test-key", {
+      generateContent: async () => ({
+        text: JSON.stringify({
+          confidence: "high",
+          detectedFruit: "tomato",
+          reasoning: "The image is a tomato, not a banana.",
+          selectedFruit: "banana",
+          status: "fruit_mismatch",
+          visibleSignals: ["smooth tomato skin", "round body"],
+        }),
+      }),
+    });
+
+    await expect(
+      client.analyzeRipeness({
+        fruitName: "banana",
+        imageBase64: "abc123",
+        mimeType: "image/jpeg",
+      }),
+    ).resolves.toMatchObject({
+      detectedFruit: "tomato",
+      selectedFruit: "banana",
+      status: "fruit_mismatch",
+    });
+  });
+
+  it("normalizes Gemini quota exhaustion into a structured error", async () => {
+    const client = new GeminiRipenessClient("test-key", {
+      generateContent: async () => {
+        throw new Error(
+          JSON.stringify({
+            error: {
+              code: 429,
+              details: [
+                {
+                  "@type": "type.googleapis.com/google.rpc.RetryInfo",
+                  retryDelay: "38s",
+                },
+              ],
+              message: "Quota exceeded.",
+              status: "RESOURCE_EXHAUSTED",
+            },
+          }),
+        );
+      },
+    });
+
+    await expect(
+      client.analyzeRipeness({
+        fruitName: "banana",
+        imageBase64: "abc123",
+        mimeType: "image/jpeg",
+      }),
+    ).rejects.toEqual(new GeminiQuotaError("Gemini is out of requests right now. Try again in 38 seconds.", 38));
   });
 });

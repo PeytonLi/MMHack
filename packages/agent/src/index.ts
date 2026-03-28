@@ -36,6 +36,13 @@ type GradientChatResponse = {
   }>;
 };
 
+type GradientErrorPayload = {
+  error?: {
+    message?: string;
+  };
+  message?: string;
+};
+
 type GradientSelectionPayload = {
   picks: Array<{
     id: number;
@@ -81,6 +88,21 @@ function extractGradientSelections(rawText: string): GradientSelectionPayload {
   const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]+?)\s*```/i);
   const candidate = fencedMatch ? fencedMatch[1] : trimmed;
   return JSON.parse(candidate) as GradientSelectionPayload;
+}
+
+async function getGradientErrorDetail(response: Response): Promise<string> {
+  const rawBody = await response.text();
+
+  if (!rawBody) {
+    return "";
+  }
+
+  try {
+    const parsed = JSON.parse(rawBody) as GradientErrorPayload;
+    return parsed.error?.message ?? parsed.message ?? rawBody;
+  } catch {
+    return rawBody;
+  }
 }
 
 function buildResponse(
@@ -144,15 +166,32 @@ export class GradientRecipeDecisionAgent implements RecipeDecisionAgent {
       });
     }
 
-    const response = await this.fetcher(`${this.baseUrl}/models`, {
+    const response = await this.fetcher(`${this.baseUrl}/chat/completions`, {
+      body: JSON.stringify({
+        max_completion_tokens: 16,
+        messages: [
+          {
+            content: "Reply with strict JSON only.",
+            role: "system",
+          },
+          {
+            content: "{\"ok\":true}",
+            role: "user",
+          },
+        ],
+        model: this.modelId,
+        temperature: 0,
+      }),
       headers: {
         Authorization: `Bearer ${this.modelAccessKey}`,
+        "Content-Type": "application/json",
       },
-      method: "GET",
+      method: "POST",
     });
 
     if (!response.ok) {
-      throw new Error(`DigitalOcean Gradient probe failed with status ${response.status}.`);
+      const detail = await getGradientErrorDetail(response);
+      throw new Error(`DigitalOcean Gradient probe failed with status ${response.status}${detail ? `: ${detail}` : ""}.`);
     }
 
     return probeStatusSchema.parse({
@@ -193,7 +232,8 @@ export class GradientRecipeDecisionAgent implements RecipeDecisionAgent {
     });
 
     if (!response.ok) {
-      throw new Error(`DigitalOcean Gradient selection failed with status ${response.status}.`);
+      const detail = await getGradientErrorDetail(response);
+      throw new Error(`DigitalOcean Gradient selection failed with status ${response.status}${detail ? `: ${detail}` : ""}.`);
     }
 
     const payload = (await response.json()) as GradientChatResponse;
@@ -239,7 +279,11 @@ export class FallbackRecipeDecisionAgent implements RecipeDecisionAgent {
   async selectRecommendations(input: RecipeDecisionInput): Promise<RecipeResponse> {
     try {
       return await this.primary.selectRecommendations(input);
-    } catch {
+    } catch (error) {
+      console.warn(
+        "Primary recipe decision agent failed. Falling back to the heuristic agent.",
+        error instanceof Error ? error.message : error,
+      );
       return this.fallback.selectRecommendations(input);
     }
   }

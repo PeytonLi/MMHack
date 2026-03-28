@@ -1,47 +1,24 @@
 {
-  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "allowJs": false,
-    "baseUrl": ".",
-    "incremental": true,
-    "jsx": "preserve",
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
-    "types": [
-      "node"
-    ],
+    "allowJs": true,
+    "noImplicitAny": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "paths": {
       "@/*": [
-        "./*"
-      ],
-      "@mmhack/ai": [
-        "../../packages/ai/src/index.ts"
-      ],
-      "@mmhack/db": [
-        "../../packages/db/src/index.ts"
-      ],
-      "@mmhack/pricing": [
-        "../../packages/pricing/src/index.ts"
-      ],
-      "@mmhack/shared": [
-        "../../packages/shared/src/index.ts"
-      ],
-      "@mmhack/vori": [
-        "../../packages/vori/src/index.ts"
+        "./src/*"
       ]
     },
-    "noEmit": true
+    "skipLibCheck": true,
+    "strictNullChecks": false
   },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts"
-  ],
-  "exclude": [
-    "node_modules"
+  "files": [],
+  "references": [
+    {
+      "path": "./tsconfig.app.json"
+    },
+    {
+      "path": "./tsconfig.node.json"
+    }
   ]
 }

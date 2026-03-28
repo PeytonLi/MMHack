@@ -1,19 +1,33 @@
+# Dependencies
 node_modules
+.venv
+__pycache__
+
+# Build output
 .turbo
 .next
 dist
+*.tsbuildinfo
+
+# Test output
 coverage
 playwright-report
 test-results
-*.tsbuildinfo
+
+# Database
 *.db
 *.db-journal
+packages/db/dev.db
+packages/db/test.db
+
+# Environment
 .env
 .env.local
 .env.*.local
+
+# Editor / tooling
+.claude
+
+# Platform
 apps/web/.vercel
-packages/db/dev.db
-packages/db/test.db
 storage
-.venv
-__pycache__

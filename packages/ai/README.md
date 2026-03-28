@@ -1,6 +1,6 @@
 # @mmhack/ai
 
-Gemini-facing prompt construction, structured response parsing, and analysis client boundaries for freshness scoring.
+Gemini-facing prompt construction, structured response parsing, and analysis client boundaries for fruit ripeness scoring.
 
 ## Commands
 

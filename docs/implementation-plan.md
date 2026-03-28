@@ -2,48 +2,46 @@
 
 ## Product Summary
 
-- Build a hosted HTTPS, mobile-friendly Next.js app for a single-store workflow.
-- The employee selects a SKU first, then uses a live in-browser camera preview on their phone to capture one image of that item.
-- v1 supports exactly three SKUs: `banana`, `apple`, and `tomato`.
-- The app sends the captured image plus selected SKU to Gemini vision using a structured prompt and strict JSON response schema.
-- Gemini returns a `1-10` freshness score plus confidence and visible defect notes.
-- A deterministic pricing policy converts the score into one of four actions:
-  - `10-9`: keep current price
-  - `8-6`: markdown `15%`
-  - `5-3`: markdown `35%`
-  - `2-1`: discard / remove from sale
-- If confidence is low, the response is malformed, or the result is otherwise unreliable, the system fails safe and does not write to Vori; it shows `manual_review` or retry instead.
-- If the result is valid, the app writes the new price or availability action to VoriOS and stores an audit record with the image and outcome.
+- Build a backend-first fruit ripeness and recipe recommendation product.
+- The backend accepts `fruitName` plus image data, scores ripeness with Gemini, fetches candidate recipes from Spoonacular, and returns recipes matched to the fruit's ripeness.
+- Supported fruits for the first slice remain `banana`, `apple`, and `tomato`.
+- The ripeness score scale is `1 = underripe`, `10 = overripe`.
+- The recommendation layer should choose among fetched recipes, not invent recipes from scratch.
 
-## Monorepo Scaffold
+## Current Architecture Direction
 
-- Root workspace managed by `pnpm` and `Turborepo`
-- `apps/web` for the employee-facing mobile web app
-- `packages/shared` for domain types and schema validation
-- `packages/pricing` for rule-based pricing decisions
-- `packages/ai` for Gemini prompts, parsing, and client boundaries
-- `packages/vori` for VoriOS read/write contracts
-- `packages/db` for Prisma schema, SQLite persistence, and audit storage
-- Root docs and `CODEX.md` as the canonical repo-local memory of product decisions
+- `apps/api` is the primary delivery target for this phase.
+- `packages/ai` owns Gemini ripeness analysis.
+- `packages/recipes` owns Spoonacular recipe lookup.
+- `packages/agent` owns recommendation selection, prefers DigitalOcean Gradient hosted models when configured, and remains the seam for an eventual Railtracks/Python sidecar.
+- `apps/web` remains as a placeholder UI scaffold, but backend completion comes first.
 
-## Public Interfaces
+## Current Public Interfaces
 
-- `SupportedSku = 'banana' | 'apple' | 'tomato'`
-- `FreshnessAnalysis = { sku; score; confidence; visibleIssues; rationale }`
-- `PricingAction = { type; markdownPercent?; voriOperation }`
-- `AuditRecord = { id; sku; imagePath; score; confidence; actionType; markdownPercent?; voriItemId; voriResult; createdAt }`
+- `FruitImageRequest = { fruitName; imageBase64; mimeType }`
+- `RipenessAnalysis = { fruitName; ripenessScore; ripenessBand; confidence; visibleSignals; reasoning }`
+- `RecipeResponse = { fruitName; ripenessScore; ripenessBand; reasoning; recipes[] }`
+- Routes:
+- `GET /health`
+- `GET /probe/gemini`
+- `GET /probe/gradient`
+- `GET /probe/spoonacular`
+- `POST /api/ripeness`
+- `POST /api/recipes`
 
-## Initial Build Priorities
+## Build Priorities
 
-1. Scaffold the workspace and docs so implementation no longer depends on chat history.
-2. Wire the app and packages with placeholder exports and typed boundaries.
-3. Add test harnesses for pricing, AI schema validation, DB create/read, and a placeholder browser flow.
-4. Verify install, typecheck, build, and test behavior locally.
+1. Prove Gemini connectivity independently.
+2. Keep `POST /api/ripeness` working as the foundational slice.
+3. Prove Spoonacular independently.
+4. Layer the recipe-selection seam on top of the ripeness output.
+5. Keep the final combined route composing prior layers instead of bypassing them.
 
 ## Defaults Locked In
 
-- Single demo operator, no auth system in v1
-- Live APIs only, no mock mode in the initial scaffold
-- Hosted URL as the primary phone access path
-- SQLite for local persistence
-- Vercel as the intended first deployment target
+- No Unkey or rate limiting yet
+- Spoonacular is the recipe provider
+- Express is the backend host
+- DigitalOcean Gradient is the preferred hosted model provider for recipe selection
+- Lovable frontend integration comes after backend routes are stable
+- Railtracks is deferred behind the agent seam because Python execution is not currently available here

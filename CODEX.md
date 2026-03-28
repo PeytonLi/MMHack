@@ -2,52 +2,47 @@
 
 ## Project Brief
 
-Build a single-store hackathon MVP that lets a store employee select a produce SKU, capture a phone photo, score freshness with Gemini vision, convert that score into a deterministic pricing or discard action, and write the result to VoriOS.
+Build a hackathon MVP that lets a user submit a fruit photo, score ripeness with Gemini vision, and return recipes whose best use matches that fruit's ripeness.
 
 ## Current Product Decisions
 
-- Single store only
-- Hosted HTTPS app, optimized for Vercel
-- Mobile-friendly web app, not a native mobile client
-- Employee selects the SKU before taking the photo
-- Live camera preview with on-demand capture, not continuous video analysis
-- Supported SKUs for v1: `banana`, `apple`, `tomato`
-- Gemini should return structured JSON with score, confidence, visible issues, and rationale
-- AI is responsible for scoring and visible-decay analysis only
-- Pricing and discard decisions are deterministic and rule-based
-
-## Pricing Policy
-
-- `10-9`: keep current price
-- `8-6`: markdown `15%`
-- `5-3`: markdown `35%`
-- `2-1`: discard / remove from sale if Vori supports it
+- Lovable frontend will call a backend in this repo
+- Backend should be a separate Express service
+- Supported fruits for v1 remain `banana`, `apple`, `tomato`
+- Gemini should return structured JSON with ripeness score, confidence, visible signals, and reasoning
+- Ripeness score semantics are `1 = underripe`, `10 = overripe`
+- The core product route accepts `fruitName` plus image payload
+- The recipe provider is Spoonacular
+- The recommendation layer should choose from fetched recipes instead of generating recipes from scratch
+- The preferred hosted model path is DigitalOcean Gradient for the recipe-selection layer
 
 ## Fail-Safe Rules
 
-- Low confidence becomes `manual_review`
-- Invalid or malformed model output becomes `manual_review`
-- Missing SKU mapping or failed Vori write should be recorded in the audit log
-- If Vori cannot mark an item unavailable, discard should fall back to an audit record plus an operator removal instruction
+- Invalid or malformed model output should fail the request clearly
+- No recipe candidates should produce an explicit backend error
+- Gemini and Spoonacular should each keep a probe route separate from product routes
+- The foundational ripeness route must remain usable even if recipe integration is failing
 
 ## Persistence Expectations
 
-- Store raw image file references plus metadata in the audit trail
-- SQLite is the persistence target for v1
-- Prisma owns schema, migrations, and client generation
+- Persistence is not required for the first backend slice
+- Existing SQLite/Prisma scaffolding can be reused later if request logging becomes necessary
 
 ## Stack Choices
 
 - Monorepo: `pnpm` + `Turborepo`
-- Web app: Next.js App Router + Tailwind CSS + TypeScript
+- API: Express + TypeScript
+- Existing web app: Next.js App Router + Tailwind CSS + TypeScript
 - Validation: `zod`
-- Database: Prisma + SQLite
+- Recipe provider: Spoonacular
+- AI provider: Gemini
+- Hosted model layer: DigitalOcean Gradient serverless inference
 - Tests: Vitest + Playwright
+- Agent seam: TypeScript heuristic selector for now
 
-## Non-Goals For This Scaffold
+## Non-Goals For This Phase
 
-- No continuous video scoring
-- No multi-store support
-- No mock/demo mode
-- No full auth or role system
-- No production-hardening beyond clean package boundaries and typed interfaces
+- No Unkey or rate limiting yet
+- No frontend implementation in this repo beyond the existing placeholder app
+- No Vori pricing integration
+- No live Railtracks service until Python execution is available

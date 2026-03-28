@@ -28,9 +28,11 @@ const Index = () => {
       setAnalysis(result);
       setStep('result');
     } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not reach the backend. Is the API server running?';
+      const isQuotaError = message.includes('Gemini is out of requests right now');
       toast({
-        title: 'Analysis failed',
-        description: err instanceof Error ? err.message : 'Could not reach the backend. Is the API server running?',
+        title: isQuotaError ? 'Gemini quota reached' : 'Analysis failed',
+        description: message,
         variant: 'destructive',
       });
       setStep('capture');

@@ -1,4 +1,4 @@
-import { FreshnessAnalysis, SkuInfo, SupportedSku } from '@/types/freshness';
+import { SkuInfo, SupportedSku } from '@/types/freshness';
 
 export const SKU_DATA: Record<SupportedSku, SkuInfo> = {
   banana: {
@@ -46,7 +46,18 @@ export function getFreshnessTextColor(score: number): string {
 }
 
 export function getRipenessDescription(sku: SupportedSku, score: number): string {
-  if (score >= 7) return `This ${sku} is fresh — great for eating raw or in fresh dishes.`;
-  if (score >= 4) return `This ${sku} is nicely ripe — ideal for cooking and baking.`;
-  return `This ${sku} is very ripe — perfect for recipes that benefit from maximum sweetness and soft texture.`;
+  if (score >= 7) return `This ${sku} is fresh, great for eating raw or in fresh dishes.`;
+  if (score >= 4) return `This ${sku} is nicely ripe, ideal for cooking and baking.`;
+  return `This ${sku} is very ripe, perfect for recipes that benefit from maximum sweetness and soft texture.`;
+}
+
+export function getFruitMismatchMessage(
+  selectedSku: SupportedSku,
+  detectedSku: SupportedSku | null,
+): string {
+  if (detectedSku) {
+    return `Plot twist: you picked ${selectedSku}, but this scan looks more like ${detectedSku}. Use the real ${selectedSku} or switch the selected fruit and try again.`;
+  }
+
+  return `Plot twist: this scan does not look like the selected ${selectedSku}. Use the real ${selectedSku} or switch the selected fruit and try again.`;
 }

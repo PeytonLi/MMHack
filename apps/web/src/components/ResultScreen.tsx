@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { AlertTriangle, ArrowLeft, ChefHat, ExternalLink, Loader2 } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ChefHat, Clock, Users, ExternalLink, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BackendRecipe, FreshnessAnalysis } from '@/types/freshness';
 import {
@@ -11,6 +11,7 @@ import {
   getRipenessDescription,
   SKU_DATA,
 } from '@/lib/freshness';
+import { LiquidGlassScore } from '@/components/LiquidGlassScore';
 import { getRecipeRecommendations } from '@/lib/api';
 
 interface ResultScreenProps {
@@ -89,10 +90,7 @@ export function ResultScreen({ analysis, image, onReset }: ResultScreenProps) {
                 Wrong Fruit
               </div>
             ) : (
-              <div className="text-right">
-                <div className={`text-5xl font-bold font-serif ${textColor}`}>{analysis.score}</div>
-                <div className="text-primary-foreground/80 text-sm font-medium">{label}</div>
-              </div>
+              <LiquidGlassScore score={analysis.score} label={label!} />
             )}
           </div>
         </div>
@@ -199,41 +197,37 @@ export function ResultScreen({ analysis, image, onReset }: ResultScreenProps) {
                 <h5 className="font-semibold">{recipe.title}</h5>
                 <p className="text-xs text-primary font-medium">{recipe.reason}</p>
                 {(recipe.readyInMinutes || recipe.servings) && (
-                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
                     {recipe.readyInMinutes && (
-                      <span className="rounded-full bg-muted px-2 py-1">
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5" />
                         {recipe.readyInMinutes} min
                       </span>
                     )}
                     {recipe.servings && (
-                      <span className="rounded-full bg-muted px-2 py-1">
-                        Serves {recipe.servings}
+                      <span className="flex items-center gap-1">
+                        <Users className="w-3.5 h-3.5" />
+                        {recipe.servings} servings
                       </span>
                     )}
                   </div>
                 )}
                 {recipe.nutrition && (
-                  <div className="grid grid-cols-5 gap-2 rounded-lg bg-muted/50 p-3 text-center">
-                    <div>
-                      <div className="text-xs text-muted-foreground">Cal</div>
-                      <div className="text-sm font-semibold">{recipe.nutrition.calories}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Protein</div>
-                      <div className="text-sm font-semibold">{recipe.nutrition.protein}g</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Carbs</div>
-                      <div className="text-sm font-semibold">{recipe.nutrition.carbs}g</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Fat</div>
-                      <div className="text-sm font-semibold">{recipe.nutrition.fat}g</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Fiber</div>
-                      <div className="text-sm font-semibold">{recipe.nutrition.fiber}g</div>
-                    </div>
+                  <div className="grid grid-cols-5 gap-1 pt-1">
+                    {[
+                      { label: 'Cal', value: recipe.nutrition.calories, unit: '' },
+                      { label: 'Protein', value: recipe.nutrition.protein, unit: 'g' },
+                      { label: 'Carbs', value: recipe.nutrition.carbs, unit: 'g' },
+                      { label: 'Fat', value: recipe.nutrition.fat, unit: 'g' },
+                      { label: 'Fiber', value: recipe.nutrition.fiber, unit: 'g' },
+                    ].map((macro) => (
+                      <div key={macro.label} className="text-center p-2 rounded-lg bg-muted/50 border border-border">
+                        <div className="text-xs font-semibold text-foreground">
+                          {macro.value}{macro.unit}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">{macro.label}</div>
+                      </div>
+                    ))}
                   </div>
                 )}
                 {recipe.summary && (

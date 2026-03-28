@@ -81,7 +81,7 @@ describe('ResultScreen', () => {
 
     expect(await screen.findByText('Garlic & Spice Plantain Chips')).toBeInTheDocument();
     expect(screen.getByText('30 min')).toBeInTheDocument();
-    expect(screen.getByText('Serves 6')).toBeInTheDocument();
+    expect(screen.getByText('6 servings')).toBeInTheDocument();
     expect(screen.getByText('Cal')).toBeInTheDocument();
     expect(screen.getByText('170')).toBeInTheDocument();
     expect(screen.getByText('Protein')).toBeInTheDocument();

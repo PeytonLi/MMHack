@@ -1,4 +1,4 @@
-export type SupportedSku = 'banana' | 'apple' | 'tomato';
+export type SupportedSku = 'banana' | 'apple' | 'tomato' | 'avocado' | 'strawberry' | 'mango' | 'peach' | 'pear' | 'pineapple' | 'lettuce' | 'bell_pepper' | 'broccoli';
 
 export type RipenessBand = 'underripe' | 'firm_ripe' | 'ripe' | 'very_ripe' | 'overripe';
 export type AnalysisStatus = 'ok' | 'fruit_mismatch';

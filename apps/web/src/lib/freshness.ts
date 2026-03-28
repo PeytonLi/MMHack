@@ -1,24 +1,18 @@
 import { SkuInfo, SupportedSku } from '@/types/freshness';
 
 export const SKU_DATA: Record<SupportedSku, SkuInfo> = {
-  banana: {
-    sku: 'banana',
-    label: 'Banana',
-    emoji: '🍌',
-    description: 'Cavendish banana',
-  },
-  apple: {
-    sku: 'apple',
-    label: 'Apple',
-    emoji: '🍎',
-    description: 'Red delicious apple',
-  },
-  tomato: {
-    sku: 'tomato',
-    label: 'Tomato',
-    emoji: '🍅',
-    description: 'Roma tomato',
-  },
+  banana: { sku: 'banana', label: 'Banana', emoji: '🍌', description: 'Cavendish banana' },
+  apple: { sku: 'apple', label: 'Apple', emoji: '🍎', description: 'Red delicious apple' },
+  tomato: { sku: 'tomato', label: 'Tomato', emoji: '🍅', description: 'Roma tomato' },
+  avocado: { sku: 'avocado', label: 'Avocado', emoji: '🥑', description: 'Hass avocado' },
+  strawberry: { sku: 'strawberry', label: 'Strawberry', emoji: '🍓', description: 'Fresh strawberry' },
+  mango: { sku: 'mango', label: 'Mango', emoji: '🥭', description: 'Ataulfo mango' },
+  peach: { sku: 'peach', label: 'Peach', emoji: '🍑', description: 'Yellow peach' },
+  pear: { sku: 'pear', label: 'Pear', emoji: '🍐', description: 'Bartlett pear' },
+  pineapple: { sku: 'pineapple', label: 'Pineapple', emoji: '🍍', description: 'Golden pineapple' },
+  lettuce: { sku: 'lettuce', label: 'Lettuce', emoji: '🥬', description: 'Romaine lettuce' },
+  bell_pepper: { sku: 'bell_pepper', label: 'Bell Pepper', emoji: '🫑', description: 'Green bell pepper' },
+  broccoli: { sku: 'broccoli', label: 'Broccoli', emoji: '🥦', description: 'Fresh broccoli' },
 };
 
 export function getFreshnessLabel(score: number): string {
@@ -46,9 +40,9 @@ export function getFreshnessTextColor(score: number): string {
 }
 
 export function getRipenessDescription(sku: SupportedSku, score: number): string {
-  if (score >= 7) return `This ${sku} is fresh, great for eating raw or in fresh dishes.`;
-  if (score >= 4) return `This ${sku} is nicely ripe, ideal for cooking and baking.`;
-  return `This ${sku} is very ripe, perfect for recipes that benefit from maximum sweetness and soft texture.`;
+  if (score >= 7) return `This ${sku} is fresh — great for eating raw or in fresh dishes.`;
+  if (score >= 4) return `This ${sku} is nicely ripe — ideal for cooking and baking.`;
+  return `This ${sku} is very ripe — perfect for recipes that benefit from maximum sweetness and soft texture.`;
 }
 
 export function getFruitMismatchMessage(

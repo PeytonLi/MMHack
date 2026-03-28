@@ -22,25 +22,38 @@ const API_KEY = 'b303c73f32fa4c7998b97871af9f372f';
 const BASE_URL = 'https://api.spoonacular.com';
 
 function getRipenessQuery(sku: SupportedSku, score: number): string {
-  const skuLabel = sku === 'banana' ? 'banana' : sku === 'apple' ? 'apple' : 'tomato';
-
   if (score >= 7) {
-    // Fresh — raw/snack recipes
-    return `fresh ${skuLabel}`;
+    return `fresh ${sku}`;
   } else if (score >= 4) {
-    // Ripe — cooked recipes
     const cooked: Record<SupportedSku, string> = {
       banana: 'ripe banana bread pancakes',
       apple: 'baked apple pie applesauce',
       tomato: 'tomato sauce soup roasted',
+      avocado: 'ripe avocado guacamole spread',
+      strawberry: 'strawberry jam compote baked',
+      mango: 'ripe mango chutney smoothie',
+      peach: 'baked peach cobbler grilled',
+      pear: 'poached pear baked dessert',
+      pineapple: 'grilled pineapple caramelized',
+      lettuce: 'lettuce wraps salad fresh',
+      bell_pepper: 'stuffed bell pepper roasted',
+      broccoli: 'broccoli stir fry steamed',
     };
     return cooked[sku];
   } else {
-    // Overripe — preserved/baked recipes
     const overripe: Record<SupportedSku, string> = {
       banana: 'overripe banana muffins ice cream',
       apple: 'apple butter cider jam',
       tomato: 'tomato paste salsa concentrate',
+      avocado: 'overripe avocado brownies mousse',
+      strawberry: 'strawberry sauce syrup puree',
+      mango: 'mango puree sorbet lassi',
+      peach: 'peach preserves jam butter',
+      pear: 'pear butter sauce compote',
+      pineapple: 'pineapple upside down cake jam',
+      lettuce: 'wilted lettuce soup braised',
+      bell_pepper: 'roasted pepper sauce dip',
+      broccoli: 'broccoli soup puree casserole',
     };
     return overripe[sku];
   }

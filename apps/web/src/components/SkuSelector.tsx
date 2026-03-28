@@ -1,4 +1,7 @@
 import { motion } from 'framer-motion';
+import { Home } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import { SKU_DATA } from '@/lib/freshness';
 import { SupportedSku } from '@/types/freshness';
 
@@ -8,9 +11,18 @@ interface SkuSelectorProps {
 
 export function SkuSelector({ onSelect }: SkuSelectorProps) {
   const skus = Object.values(SKU_DATA);
+  const navigate = useNavigate();
 
   return (
-    <div className="flex flex-col items-center gap-8 px-6 py-12">
+    <div className="flex flex-col items-center gap-8 px-6 py-12 relative">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="absolute top-4 left-4"
+        onClick={() => navigate('/')}
+      >
+        <Home className="w-5 h-5" />
+      </Button>
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -20,7 +32,7 @@ export function SkuSelector({ onSelect }: SkuSelectorProps) {
           FreshLens
         </h1>
         <p className="text-muted-foreground text-lg max-w-sm">
-          Scan produce to assess freshness, get pricing guidance, and discover recipes
+          Scan produce to assess freshness and discover ripeness-matched recipes
         </p>
       </motion.div>
 

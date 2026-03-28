@@ -15,3 +15,4 @@ apps/web/.vercel
 packages/db/dev.db
 packages/db/test.db
 storage
+.venv

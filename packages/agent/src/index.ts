@@ -70,8 +70,8 @@ function ensureCandidates(input: RecipeDecisionInput): void {
 function scoreRecipeForBand(recipe: RecipeCandidate, band: RipenessAnalysis["ripenessBand"]): number {
   const haystack = `${recipe.title} ${recipe.summary ?? ""}`.toLowerCase();
   const keywords = KEYWORDS_BY_BAND[band];
-  const includeScore = keywords.include.reduce((score, keyword) => score + (haystack.includes(keyword) ? 2 : 0), 0);
-  const excludeScore = (keywords.exclude ?? []).reduce((score, keyword) => score + (haystack.includes(keyword) ? 3 : 0), 0);
+  const includeScore = keywords.include.reduce((acc: number, keyword: string) => acc + (haystack.includes(keyword) ? 2 : 0), 0);
+  const excludeScore = ((keywords as { include: readonly string[]; exclude?: readonly string[] }).exclude ?? []).reduce((acc: number, keyword: string) => acc + (haystack.includes(keyword) ? 3 : 0), 0);
   return includeScore - excludeScore;
 }
 

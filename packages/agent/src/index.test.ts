@@ -26,6 +26,30 @@ describe("HeuristicRecipeDecisionAgent", () => {
     expect(result.recipes[0]?.title).toBe("Banana Bread");
     expect(result.recipes[1]?.title).toBe("Banana Smoothie");
   });
+
+  it("prefers savory or starchy candidates for underripe bananas", async () => {
+    const agent = new HeuristicRecipeDecisionAgent();
+
+    const result = await agent.selectRecommendations({
+      analysis: {
+        confidence: "high",
+        fruitName: "banana",
+        reasoning: "Bright green peel and very firm texture.",
+        ripenessBand: "underripe",
+        ripenessScore: 2,
+        visibleSignals: ["green peel", "firm shape"],
+      },
+      candidates: [
+        { id: 1, title: "Banana Bread" },
+        { id: 2, title: "Garlic & Spice Plantain Chips" },
+        { id: 3, title: "Buttered Plantain Fries and Seasoned Avocado" },
+        { id: 4, title: "Banana Smoothie" },
+      ],
+    });
+
+    expect(result.recipes[0]?.title).toBe("Garlic & Spice Plantain Chips");
+    expect(result.recipes[1]?.title).toBe("Buttered Plantain Fries and Seasoned Avocado");
+  });
 });
 
 describe("GradientRecipeDecisionAgent", () => {

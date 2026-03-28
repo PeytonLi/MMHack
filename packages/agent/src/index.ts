@@ -9,11 +9,22 @@ import {
 } from "@mmhack/shared";
 
 const KEYWORDS_BY_BAND = {
-  firm_ripe: ["chips", "grilled", "roasted", "baked", "slaw"],
-  overripe: ["bread", "muffin", "smoothie", "cake", "pancake", "pudding"],
-  ripe: ["salad", "salsa", "tart", "pie", "toast"],
-  underripe: ["pickled", "green", "savory", "chips"],
-  very_ripe: ["smoothie", "bread", "fritter", "compote", "jam"],
+  firm_ripe: {
+    include: ["chips", "grilled", "roasted", "baked", "slaw"],
+  },
+  overripe: {
+    include: ["bread", "muffin", "smoothie", "cake", "pancake", "pudding"],
+  },
+  ripe: {
+    include: ["salad", "salsa", "tart", "pie", "toast"],
+  },
+  underripe: {
+    include: ["pickled", "green", "savory", "chips", "plantain", "fries", "fried", "roasted"],
+    exclude: ["bread", "muffin", "smoothie", "cake", "cookie", "milkshake", "ice cream"],
+  },
+  very_ripe: {
+    include: ["smoothie", "bread", "fritter", "compote", "jam"],
+  },
 } as const;
 
 export type RecipeDecisionInput = {
@@ -59,7 +70,9 @@ function ensureCandidates(input: RecipeDecisionInput): void {
 function scoreRecipeForBand(recipe: RecipeCandidate, band: RipenessAnalysis["ripenessBand"]): number {
   const haystack = `${recipe.title} ${recipe.summary ?? ""}`.toLowerCase();
   const keywords = KEYWORDS_BY_BAND[band];
-  return keywords.reduce((score, keyword) => score + (haystack.includes(keyword) ? 2 : 0), 0);
+  const includeScore = keywords.include.reduce((score, keyword) => score + (haystack.includes(keyword) ? 2 : 0), 0);
+  const excludeScore = (keywords.exclude ?? []).reduce((score, keyword) => score + (haystack.includes(keyword) ? 3 : 0), 0);
+  return includeScore - excludeScore;
 }
 
 function buildReason(recipe: RecipeCandidate, analysis: RipenessAnalysis): string {
@@ -76,6 +89,9 @@ function buildGradientPrompt(input: RecipeDecisionInput): string {
     `Ripeness score: ${input.analysis.ripenessScore}/10`,
     `Ripeness band: ${input.analysis.ripenessBand}`,
     `Reasoning: ${input.analysis.reasoning}`,
+    input.analysis.ripenessBand === "underripe"
+      ? "Prefer savory, chip, fry, roasted, or plantain-style uses. Avoid soft-dessert recipes unless the candidates are otherwise weak."
+      : "Prefer recipes that naturally fit the current ripeness state.",
     "Choose the best three recipes for this ripeness state.",
     "Return only JSON in the format {\"picks\":[{\"id\":123,\"reason\":\"...\"}]}",
     "Candidate recipes:",

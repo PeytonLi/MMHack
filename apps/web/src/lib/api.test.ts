@@ -88,14 +88,40 @@ describe('analyzeRipeness', () => {
         fruitName: 'banana',
         analysis: {
           status: 'ok',
-          sku: 'banana',
-          score: 9,
           confidence: 'high',
-          visibleIssues: ['brown peel'],
-          rationale: 'Very ripe banana.',
+          fruitName: 'banana',
+          reasoning: 'Very ripe banana.',
           ripenessBand: 'overripe',
+          ripenessScore: 9,
+          visibleSignals: ['brown peel'],
         },
       }),
     });
+  });
+
+  it('turns invalid recipe request errors into user-safe copy', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        new Response(
+          JSON.stringify({
+            error: 'invalid_request',
+          }),
+          { status: 400 },
+        ),
+      ),
+    );
+
+    await expect(
+      getRecipeRecommendations('banana', {
+        status: 'ok',
+        sku: 'banana',
+        score: 2,
+        confidence: 'high',
+        visibleIssues: ['green peel'],
+        rationale: 'Very firm and green.',
+        ripenessBand: 'underripe',
+      }),
+    ).rejects.toThrow('Recipe recommendations could not be loaded right now.');
   });
 });

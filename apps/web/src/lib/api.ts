@@ -20,6 +20,18 @@ function parseDataUrl(dataUrl: string): { base64: string; mimeType: string } {
   return { base64, mimeType };
 }
 
+function mapAnalysisForRecipeRequest(analysis: FreshnessMatchAnalysis) {
+  return {
+    status: 'ok' as const,
+    confidence: analysis.confidence,
+    fruitName: analysis.sku,
+    reasoning: analysis.rationale,
+    ripenessBand: analysis.ripenessBand,
+    ripenessScore: analysis.score,
+    visibleSignals: analysis.visibleIssues,
+  };
+}
+
 async function buildApiError(response: Response, fallbackPrefix: string): Promise<Error> {
   let payload: ApiErrorPayload | null = null;
   let rawText = '';
@@ -32,6 +44,14 @@ async function buildApiError(response: Response, fallbackPrefix: string): Promis
 
   if (payload?.error === 'quota_exhausted') {
     return new Error(payload.message ?? 'Gemini is out of requests right now. Please try again later.');
+  }
+
+  if (payload?.error === 'invalid_request') {
+    return new Error(
+      fallbackPrefix.startsWith('Recipe')
+        ? 'Recipe recommendations could not be loaded right now.'
+        : 'This request could not be processed. Please try again.',
+    );
   }
 
   const detail = payload?.message ?? payload?.error ?? rawText;
@@ -93,7 +113,7 @@ export async function getRecipeRecommendations(
   const response = await fetch('/api/recipes', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fruitName: sku, analysis }),
+    body: JSON.stringify({ fruitName: sku, analysis: mapAnalysisForRecipeRequest(analysis) }),
   });
 
   if (!response.ok) {

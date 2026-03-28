@@ -53,6 +53,7 @@ describe("api app", () => {
 
   it("returns combined recipe recommendations", async () => {
     const analyzeRipeness = vi.fn();
+    const searchRecipes = vi.fn(async () => [{ id: 1, title: "Banana Bread" }]);
     const app = createApiApp({
       agent: {
         probe: vi.fn(async () => ({ configured: true, ok: true, provider: "digitalocean-gradient" })),
@@ -78,7 +79,7 @@ describe("api app", () => {
       },
       recipes: {
         probe: vi.fn(),
-        searchRecipes: vi.fn(async () => [{ id: 1, title: "Banana Bread" }]),
+        searchRecipes,
       },
     });
 
@@ -99,6 +100,11 @@ describe("api app", () => {
     expect(response.body.status).toBe("ok");
     expect(response.body.recipes[0].title).toBe("Banana Bread");
     expect(analyzeRipeness).not.toHaveBeenCalled();
+    expect(searchRecipes).toHaveBeenCalledWith({
+      fruitName: "banana",
+      limit: 8,
+      ripenessBand: "overripe",
+    });
   });
 
   it("returns a mismatch result without fetching recipes", async () => {

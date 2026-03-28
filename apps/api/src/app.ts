@@ -84,6 +84,7 @@ export function createApiApp(dependencies: ApiDependencies = createLiveDependenc
       const candidates = await dependencies.recipes.searchRecipes({
         fruitName: body.fruitName,
         limit: 8,
+        ripenessBand: analysis.ripenessBand,
       });
       response.json(
         await dependencies.agent.selectRecommendations({

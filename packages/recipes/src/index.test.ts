@@ -46,4 +46,60 @@ describe("SpoonacularRecipeProvider", () => {
       },
     ]);
   });
+
+  it("uses ripeness-aware query fallbacks for underripe bananas", async () => {
+    const fetcher = vi.fn(async (input: URL | RequestInfo) => {
+      const url = String(input);
+
+      if (url.includes("query=savory+plantain")) {
+        return new Response(
+          JSON.stringify({
+            results: [
+              {
+                id: 41,
+                title: "Buttered Plantain Fries and Seasoned Avocado",
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+
+      if (url.includes("query=plantain")) {
+        return new Response(
+          JSON.stringify({
+            results: [
+              {
+                id: 42,
+                title: "Garlic & Spice Plantain Chips",
+              },
+            ],
+          }),
+          { status: 200 },
+        );
+      }
+
+      return new Response(
+        JSON.stringify({
+          results: [
+            {
+              id: 43,
+              title: "Chocolate Coconut Banana Bread",
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    });
+
+    const provider = new SpoonacularRecipeProvider("test-key", fetcher);
+
+    await expect(provider.searchRecipes({ fruitName: "banana", limit: 3, ripenessBand: "underripe" })).resolves.toEqual([
+      { id: 41, title: "Buttered Plantain Fries and Seasoned Avocado" },
+      { id: 42, title: "Garlic & Spice Plantain Chips" },
+      { id: 43, title: "Chocolate Coconut Banana Bread" },
+    ]);
+
+    expect(fetcher).toHaveBeenCalledTimes(3);
+  });
 });

@@ -1,8 +1,9 @@
-import { probeStatusSchema, recipeCandidateSchema, type ProbeStatus, type RecipeCandidate, type SupportedSku } from "@mmhack/shared";
+import { probeStatusSchema, recipeCandidateSchema, type ProbeStatus, type RecipeCandidate, type RipenessBand, type SupportedSku } from "@mmhack/shared";
 
 export type RecipeSearchInput = {
   fruitName: SupportedSku;
   limit?: number;
+  ripenessBand?: RipenessBand;
 };
 
 export type RecipeProvider = {
@@ -21,6 +22,13 @@ type SpoonacularSearchResponse = {
     summary?: string;
     title: string;
   }>;
+};
+
+const QUERY_HINTS: Partial<Record<SupportedSku, Partial<Record<RipenessBand, string[]>>>> = {
+  banana: {
+    // Spoonacular's plain "banana" search heavily skews toward overripe desserts.
+    underripe: ["savory plantain", "plantain", "banana"],
+  },
 };
 
 export class SpoonacularRecipeProvider implements RecipeProvider {
@@ -53,31 +61,47 @@ export class SpoonacularRecipeProvider implements RecipeProvider {
       throw new Error("SPOONACULAR_API_KEY is required before live recipe lookup can be implemented.");
     }
 
-    const searchParams = new URLSearchParams({
-      addRecipeInformation: "true",
-      apiKey: this.apiKey,
-      number: String(input.limit ?? 8),
-      query: input.fruitName,
-      sort: "popularity",
-    });
+    const limit = input.limit ?? 8;
+    const queries = QUERY_HINTS[input.fruitName]?.[input.ripenessBand ?? "ripe"] ?? [input.fruitName];
+    const dedupedRecipes = new Map<number, RecipeCandidate>();
 
-    const response = await this.fetcher(`${this.baseUrl}/recipes/complexSearch?${searchParams.toString()}`);
+    for (const query of queries) {
+      const searchParams = new URLSearchParams({
+        addRecipeInformation: "true",
+        apiKey: this.apiKey,
+        number: String(limit),
+        query,
+        sort: "popularity",
+      });
 
-    if (!response.ok) {
-      throw new Error(`Spoonacular request failed with status ${response.status}.`);
+      const response = await this.fetcher(`${this.baseUrl}/recipes/complexSearch?${searchParams.toString()}`);
+
+      if (!response.ok) {
+        throw new Error(`Spoonacular request failed with status ${response.status}.`);
+      }
+
+      const payload = (await response.json()) as SpoonacularSearchResponse;
+
+      for (const recipe of payload.results ?? []) {
+        const parsed = recipeCandidateSchema.parse({
+          id: recipe.id,
+          imageUrl: recipe.image,
+          sourceName: recipe.sourceName,
+          sourceUrl: recipe.sourceUrl,
+          summary: recipe.summary,
+          title: recipe.title,
+        });
+
+        if (!dedupedRecipes.has(parsed.id)) {
+          dedupedRecipes.set(parsed.id, parsed);
+        }
+      }
+
+      if (dedupedRecipes.size >= limit) {
+        break;
+      }
     }
 
-    const payload = (await response.json()) as SpoonacularSearchResponse;
-
-    return (payload.results ?? []).map((recipe) =>
-      recipeCandidateSchema.parse({
-        id: recipe.id,
-        imageUrl: recipe.image,
-        sourceName: recipe.sourceName,
-        sourceUrl: recipe.sourceUrl,
-        summary: recipe.summary,
-        title: recipe.title,
-      }),
-    );
+    return Array.from(dedupedRecipes.values()).slice(0, limit);
   }
 }

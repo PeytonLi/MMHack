@@ -23,6 +23,17 @@ describe("SpoonacularRecipeProvider", () => {
               {
                 id: 12,
                 image: "https://example.com/banana-bread.jpg",
+                nutrition: {
+                  nutrients: [
+                    { amount: 245.4, name: "Calories" },
+                    { amount: 4.2, name: "Protein" },
+                    { amount: 39.1, name: "Carbohydrates" },
+                    { amount: 8.6, name: "Fat" },
+                    { amount: 3.3, name: "Fiber" },
+                  ],
+                },
+                readyInMinutes: 55,
+                servings: 8,
                 sourceName: "Example Kitchen",
                 sourceUrl: "https://example.com/banana-bread",
                 summary: "A sweet loaf for overripe bananas.",
@@ -39,6 +50,15 @@ describe("SpoonacularRecipeProvider", () => {
       {
         id: 12,
         imageUrl: "https://example.com/banana-bread.jpg",
+        nutrition: {
+          calories: 245,
+          protein: 4,
+          carbs: 39,
+          fat: 9,
+          fiber: 3,
+        },
+        readyInMinutes: 55,
+        servings: 8,
         sourceName: "Example Kitchen",
         sourceUrl: "https://example.com/banana-bread",
         summary: "A sweet loaf for overripe bananas.",
@@ -57,6 +77,11 @@ describe("SpoonacularRecipeProvider", () => {
             results: [
               {
                 id: 41,
+                nutrition: {
+                  nutrients: [{ amount: 190.4, name: "Calories" }],
+                },
+                readyInMinutes: 25,
+                servings: 4,
                 title: "Buttered Plantain Fries and Seasoned Avocado",
               },
             ],
@@ -71,6 +96,11 @@ describe("SpoonacularRecipeProvider", () => {
             results: [
               {
                 id: 42,
+                nutrition: {
+                  nutrients: [{ amount: 170.2, name: "Calories" }],
+                },
+                readyInMinutes: 30,
+                servings: 6,
                 title: "Garlic & Spice Plantain Chips",
               },
             ],
@@ -84,6 +114,11 @@ describe("SpoonacularRecipeProvider", () => {
           results: [
             {
               id: 43,
+              nutrition: {
+                nutrients: [{ amount: 260.8, name: "Calories" }],
+              },
+              readyInMinutes: 60,
+              servings: 8,
               title: "Chocolate Coconut Banana Bread",
             },
           ],
@@ -95,9 +130,27 @@ describe("SpoonacularRecipeProvider", () => {
     const provider = new SpoonacularRecipeProvider("test-key", fetcher);
 
     await expect(provider.searchRecipes({ fruitName: "banana", limit: 3, ripenessBand: "underripe" })).resolves.toEqual([
-      { id: 41, title: "Buttered Plantain Fries and Seasoned Avocado" },
-      { id: 42, title: "Garlic & Spice Plantain Chips" },
-      { id: 43, title: "Chocolate Coconut Banana Bread" },
+      {
+        id: 41,
+        nutrition: { calories: 190, protein: 0, carbs: 0, fat: 0, fiber: 0 },
+        readyInMinutes: 25,
+        servings: 4,
+        title: "Buttered Plantain Fries and Seasoned Avocado",
+      },
+      {
+        id: 42,
+        nutrition: { calories: 170, protein: 0, carbs: 0, fat: 0, fiber: 0 },
+        readyInMinutes: 30,
+        servings: 6,
+        title: "Garlic & Spice Plantain Chips",
+      },
+      {
+        id: 43,
+        nutrition: { calories: 261, protein: 0, carbs: 0, fat: 0, fiber: 0 },
+        readyInMinutes: 60,
+        servings: 8,
+        title: "Chocolate Coconut Banana Bread",
+      },
     ]);
 
     expect(fetcher).toHaveBeenCalledTimes(3);

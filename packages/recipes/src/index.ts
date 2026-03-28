@@ -17,6 +17,14 @@ type SpoonacularSearchResponse = {
   results?: Array<{
     id: number;
     image?: string;
+    nutrition?: {
+      nutrients?: Array<{
+        amount?: number;
+        name?: string;
+      }>;
+    };
+    readyInMinutes?: number;
+    servings?: number;
     sourceName?: string;
     sourceUrl?: string;
     summary?: string;
@@ -68,6 +76,7 @@ export class SpoonacularRecipeProvider implements RecipeProvider {
     for (const query of queries) {
       const searchParams = new URLSearchParams({
         addRecipeInformation: "true",
+        addRecipeNutrition: "true",
         apiKey: this.apiKey,
         number: String(limit),
         query,
@@ -83,9 +92,24 @@ export class SpoonacularRecipeProvider implements RecipeProvider {
       const payload = (await response.json()) as SpoonacularSearchResponse;
 
       for (const recipe of payload.results ?? []) {
+        const nutrients = recipe.nutrition?.nutrients ?? [];
+        const getAmount = (name: string) =>
+          Math.round(nutrients.find((nutrient) => nutrient.name === name)?.amount ?? 0);
+
         const parsed = recipeCandidateSchema.parse({
           id: recipe.id,
           imageUrl: recipe.image,
+          nutrition: recipe.nutrition
+            ? {
+                calories: getAmount("Calories"),
+                protein: getAmount("Protein"),
+                carbs: getAmount("Carbohydrates"),
+                fat: getAmount("Fat"),
+                fiber: getAmount("Fiber"),
+              }
+            : undefined,
+          readyInMinutes: recipe.readyInMinutes ?? undefined,
+          servings: recipe.servings ?? undefined,
           sourceName: recipe.sourceName,
           sourceUrl: recipe.sourceUrl,
           summary: recipe.summary,

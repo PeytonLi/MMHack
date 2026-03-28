@@ -81,9 +81,20 @@ export const recipeRequestSchema = z.object({
   fruitName: supportedSkuSchema,
 });
 
+export const nutritionFactsSchema = z.object({
+  calories: z.number().int().nonnegative(),
+  protein: z.number().int().nonnegative(),
+  carbs: z.number().int().nonnegative(),
+  fat: z.number().int().nonnegative(),
+  fiber: z.number().int().nonnegative(),
+});
+
 export const recipeCandidateSchema = z.object({
   id: z.number().int(),
   imageUrl: z.string().min(1).optional(),
+  nutrition: nutritionFactsSchema.optional(),
+  readyInMinutes: z.number().int().positive().optional(),
+  servings: z.number().int().positive().optional(),
   sourceName: z.string().min(1).optional(),
   sourceUrl: z.string().min(1).optional(),
   summary: z.string().min(1).optional(),
@@ -154,6 +165,7 @@ export type FruitMismatchModelPayload = z.infer<typeof fruitMismatchModelPayload
 export type RipenessAnalysis = z.infer<typeof ripenessAnalysisSchema>;
 export type FruitMismatchAnalysis = z.infer<typeof fruitMismatchAnalysisSchema>;
 export type RipenessAnalysisResult = z.infer<typeof ripenessAnalysisResultSchema>;
+export type NutritionFacts = z.infer<typeof nutritionFactsSchema>;
 export type RecipeCandidate = z.infer<typeof recipeCandidateSchema>;
 export type RecipeRecommendation = z.infer<typeof recipeRecommendationSchema>;
 export type RecipeResponse = z.infer<typeof recipeResponseSchema>;

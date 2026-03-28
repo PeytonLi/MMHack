@@ -32,11 +32,22 @@ export interface FreshnessMismatchAnalysis {
 
 export type FreshnessAnalysis = FreshnessMatchAnalysis | FreshnessMismatchAnalysis;
 
+export interface NutritionFacts {
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  fiber: number;
+}
+
 /** A single recipe recommendation returned by POST /api/recipes */
 export interface BackendRecipe {
   id: number;
   title: string;
   imageUrl?: string;
+  nutrition?: NutritionFacts;
+  readyInMinutes?: number;
+  servings?: number;
   sourceName?: string;
   sourceUrl?: string;
   summary?: string;

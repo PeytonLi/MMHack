@@ -198,6 +198,44 @@ export function ResultScreen({ analysis, image, onReset }: ResultScreenProps) {
                 )}
                 <h5 className="font-semibold">{recipe.title}</h5>
                 <p className="text-xs text-primary font-medium">{recipe.reason}</p>
+                {(recipe.readyInMinutes || recipe.servings) && (
+                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                    {recipe.readyInMinutes && (
+                      <span className="rounded-full bg-muted px-2 py-1">
+                        {recipe.readyInMinutes} min
+                      </span>
+                    )}
+                    {recipe.servings && (
+                      <span className="rounded-full bg-muted px-2 py-1">
+                        Serves {recipe.servings}
+                      </span>
+                    )}
+                  </div>
+                )}
+                {recipe.nutrition && (
+                  <div className="grid grid-cols-5 gap-2 rounded-lg bg-muted/50 p-3 text-center">
+                    <div>
+                      <div className="text-xs text-muted-foreground">Cal</div>
+                      <div className="text-sm font-semibold">{recipe.nutrition.calories}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Protein</div>
+                      <div className="text-sm font-semibold">{recipe.nutrition.protein}g</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Carbs</div>
+                      <div className="text-sm font-semibold">{recipe.nutrition.carbs}g</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Fat</div>
+                      <div className="text-sm font-semibold">{recipe.nutrition.fat}g</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-muted-foreground">Fiber</div>
+                      <div className="text-sm font-semibold">{recipe.nutrition.fiber}g</div>
+                    </div>
+                  </div>
+                )}
                 {recipe.summary && (
                   <p className="text-sm text-muted-foreground line-clamp-2">
                     {recipe.summary.replace(/<[^>]*>/g, '')}

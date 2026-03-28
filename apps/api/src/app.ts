@@ -3,15 +3,18 @@ import express from "express";
 import { ZodError } from "zod";
 
 import { FallbackRecipeDecisionAgent, GradientRecipeDecisionAgent, HeuristicRecipeDecisionAgent, type RecipeDecisionAgent } from "@mmhack/agent";
-import { GeminiRipenessClient, type AnalyzeRipenessInput } from "@mmhack/ai";
+import { GeminiRipenessClient, isGeminiQuotaError, type AnalyzeRipenessInput } from "@mmhack/ai";
 import { SpoonacularRecipeProvider } from "@mmhack/recipes";
-import { fruitImageRequestSchema } from "@mmhack/shared";
+import { fruitImageRequestSchema, quotaErrorResponseSchema, recipeRequestSchema, type RipenessAnalysisResult } from "@mmhack/shared";
 
 import { getApiEnv, type ApiEnv } from "./env";
 
 export type ApiDependencies = {
   agent: RecipeDecisionAgent;
-  gemini: Pick<GeminiRipenessClient, "analyzeRipeness" | "probe">;
+  gemini: {
+    analyzeRipeness(input: AnalyzeRipenessInput): Promise<RipenessAnalysisResult>;
+    probe: Pick<GeminiRipenessClient, "probe">["probe"];
+  };
   recipes: Pick<SpoonacularRecipeProvider, "probe" | "searchRecipes">;
 };
 
@@ -72,8 +75,12 @@ export function createApiApp(dependencies: ApiDependencies = createLiveDependenc
 
   app.post("/api/recipes", async (request, response, next) => {
     try {
-      const body = fruitImageRequestSchema.parse(request.body);
-      const analysis = await dependencies.gemini.analyzeRipeness(mapFruitRequest(body));
+      const body = recipeRequestSchema.parse(request.body);
+      const analysis = body.analysis;
+      if (analysis.status === "fruit_mismatch") {
+        response.json(analysis);
+        return;
+      }
       const candidates = await dependencies.recipes.searchRecipes({
         fruitName: body.fruitName,
         limit: 8,
@@ -95,6 +102,18 @@ export function createApiApp(dependencies: ApiDependencies = createLiveDependenc
         error: "invalid_request",
         issues: error.issues,
       });
+      return;
+    }
+
+    if (isGeminiQuotaError(error)) {
+      response.status(error.statusCode).json(
+        quotaErrorResponseSchema.parse({
+          error: error.error,
+          message: error.message,
+          provider: error.provider,
+          retryAfterSeconds: error.retryAfterSeconds,
+        }),
+      );
       return;
     }
 

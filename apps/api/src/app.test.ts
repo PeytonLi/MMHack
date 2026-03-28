@@ -1,6 +1,7 @@
 import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 
+import { GeminiQuotaError } from "@mmhack/ai";
 import { createApiApp } from "./app";
 
 describe("api app", () => {
@@ -27,6 +28,7 @@ describe("api app", () => {
           reasoning: "Strong spotting across the peel.",
           ripenessBand: "overripe",
           ripenessScore: 9,
+          status: "ok",
           visibleSignals: ["dark spots"],
         })),
         probe: vi.fn(),
@@ -45,10 +47,12 @@ describe("api app", () => {
       fruitName: "banana",
       ripenessBand: "overripe",
       ripenessScore: 9,
+      status: "ok",
     });
   });
 
   it("returns combined recipe recommendations", async () => {
+    const analyzeRipeness = vi.fn();
     const app = createApiApp({
       agent: {
         probe: vi.fn(async () => ({ configured: true, ok: true, provider: "digitalocean-gradient" })),
@@ -65,17 +69,11 @@ describe("api app", () => {
           ],
           ripenessBand: "overripe",
           ripenessScore: 9,
+          status: "ok",
         })),
       },
       gemini: {
-        analyzeRipeness: vi.fn(async () => ({
-          confidence: "high",
-          fruitName: "banana",
-          reasoning: "Peel is mostly brown.",
-          ripenessBand: "overripe",
-          ripenessScore: 9,
-          visibleSignals: ["brown peel"],
-        })),
+        analyzeRipeness,
         probe: vi.fn(),
       },
       recipes: {
@@ -85,13 +83,85 @@ describe("api app", () => {
     });
 
     const response = await request(app).post("/api/recipes").send({
+      analysis: {
+        confidence: "high",
+        fruitName: "banana",
+        reasoning: "Peel is mostly brown.",
+        ripenessBand: "overripe",
+        ripenessScore: 9,
+        status: "ok",
+        visibleSignals: ["brown peel"],
+      },
+      fruitName: "banana",
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.status).toBe("ok");
+    expect(response.body.recipes[0].title).toBe("Banana Bread");
+    expect(analyzeRipeness).not.toHaveBeenCalled();
+  });
+
+  it("returns a mismatch result without fetching recipes", async () => {
+    const searchRecipes = vi.fn();
+    const selectRecommendations = vi.fn();
+    const analyzeRipeness = vi.fn();
+    const app = createApiApp({
+      agent: { probe: vi.fn(async () => ({ configured: true, ok: true, provider: "heuristic-agent" })), selectRecommendations },
+      gemini: {
+        analyzeRipeness,
+        probe: vi.fn(),
+      },
+      recipes: { probe: vi.fn(), searchRecipes },
+    });
+
+    const response = await request(app).post("/api/recipes").send({
+      analysis: {
+        confidence: "high",
+        detectedFruit: "tomato",
+        reasoning: "The selected fruit was banana, but the image looks like a green tomato.",
+        selectedFruit: "banana",
+        status: "fruit_mismatch",
+        visibleSignals: ["round shape", "green tomato skin"],
+      },
+      fruitName: "banana",
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      detectedFruit: "tomato",
+      selectedFruit: "banana",
+      status: "fruit_mismatch",
+    });
+    expect(analyzeRipeness).not.toHaveBeenCalled();
+    expect(searchRecipes).not.toHaveBeenCalled();
+    expect(selectRecommendations).not.toHaveBeenCalled();
+  });
+
+  it("returns a structured Gemini quota error", async () => {
+    const app = createApiApp({
+      agent: { probe: vi.fn(async () => ({ configured: true, ok: true, provider: "heuristic-agent" })), selectRecommendations: vi.fn() },
+      gemini: {
+        analyzeRipeness: vi.fn(async () => {
+          throw new GeminiQuotaError("Gemini is out of requests right now. Try again in 38 seconds.", 38);
+        }),
+        probe: vi.fn(),
+      },
+      recipes: { probe: vi.fn(), searchRecipes: vi.fn() },
+    });
+
+    const response = await request(app).post("/api/ripeness").send({
       fruitName: "banana",
       imageBase64: "abc123",
       mimeType: "image/jpeg",
     });
 
-    expect(response.status).toBe(200);
-    expect(response.body.recipes[0].title).toBe("Banana Bread");
+    expect(response.status).toBe(429);
+    expect(response.body).toEqual({
+      error: "quota_exhausted",
+      message: "Gemini is out of requests right now. Try again in 38 seconds.",
+      provider: "gemini",
+      retryAfterSeconds: 38,
+    });
   });
 
   it("rejects invalid requests", async () => {

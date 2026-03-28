@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowJs": false,
+    "checkJs": false,
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "baseUrl": ".",
+    "paths": {
+      "@mmhack/ai": ["packages/ai/src/index.ts"],
+      "@mmhack/db": ["packages/db/src/index.ts"],
+      "@mmhack/pricing": ["packages/pricing/src/index.ts"],
+      "@mmhack/shared": ["packages/shared/src/index.ts"],
+      "@mmhack/vori": ["packages/vori/src/index.ts"]
+    }
+  }
+}

@@ -1,0 +1,35 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model SkuConfig {
+  id                String   @id @default(cuid())
+  sku               String   @unique
+  displayName       String
+  currentPriceCents Int
+  defaultPriceCents Int
+  voriItemId        String   @unique
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model AuditRecord {
+  id              String   @id @default(cuid())
+  sku             String
+  imagePath       String
+  score           Int
+  confidence      String
+  visibleIssues   String
+  rationale       String
+  actionType      String
+  markdownPercent Int?
+  voriItemId      String
+  voriOperation   String
+  voriResult      String?
+  createdAt       DateTime @default(now())
+}

@@ -1,0 +1,17 @@
+node_modules
+.turbo
+.next
+dist
+coverage
+playwright-report
+test-results
+*.tsbuildinfo
+*.db
+*.db-journal
+.env
+.env.local
+.env.*.local
+apps/web/.vercel
+packages/db/dev.db
+packages/db/test.db
+storage

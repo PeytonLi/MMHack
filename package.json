@@ -1,0 +1,38 @@
+{
+  "name": "mmhack",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "turbo build",
+    "db:generate": "pnpm --filter @mmhack/db db:generate",
+    "db:migrate": "pnpm --filter @mmhack/db db:migrate",
+    "db:push": "pnpm --filter @mmhack/db db:push",
+    "db:seed": "pnpm --filter @mmhack/db db:seed",
+    "dev": "turbo dev --parallel",
+    "format": "prettier --check .",
+    "format:write": "prettier --write .",
+    "lint": "turbo lint",
+    "postinstall": "pnpm db:generate",
+    "test": "turbo test",
+    "test:e2e": "playwright test",
+    "typecheck": "turbo typecheck"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.23.0",
+    "@playwright/test": "^1.52.0",
+    "@types/node": "^22.14.0",
+    "cross-env": "^7.0.3",
+    "eslint": "^9.23.0",
+    "globals": "^16.0.0",
+    "playwright": "^1.52.0",
+    "prettier": "^3.5.3",
+    "turbo": "^2.5.0",
+    "typescript": "^5.8.2",
+    "typescript-eslint": "^8.28.0",
+    "vitest": "^3.1.1"
+  }
+}

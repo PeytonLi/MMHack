@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { analyzeRipeness, getRecipeRecommendations } from '@/lib/api';
+import { analyzeRipeness, getRecipeRecommendations, sendRecipeAssistantMessage } from '@/lib/api';
 
 describe('analyzeRipeness', () => {
   afterEach(() => {
@@ -123,5 +123,54 @@ describe('analyzeRipeness', () => {
         ripenessBand: 'underripe',
       }),
     ).rejects.toThrow('Recipe recommendations could not be loaded right now.');
+  });
+
+  it('sends grounded assistant turns with the current scan context', async () => {
+    const fetchSpy = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          status: 'ok',
+          reply: 'I found a faster option.',
+          appliedConstraints: ['under 30 minutes'],
+          recipes: [],
+        }),
+        { status: 200 },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchSpy);
+
+    await sendRecipeAssistantMessage(
+      'banana',
+      {
+        status: 'ok',
+        sku: 'banana',
+        score: 6,
+        confidence: 'high',
+        visibleIssues: ['yellow peel'],
+        rationale: 'Mostly yellow peel with a few freckles.',
+        ripenessBand: 'ripe',
+      },
+      [{ role: 'assistant', content: 'How would you like to refine these recipes?' }],
+      'Make it under 30 minutes.',
+    );
+
+    expect(fetchSpy).toHaveBeenCalledWith('/api/recipe-assistant', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fruitName: 'banana',
+        analysis: {
+          status: 'ok',
+          confidence: 'high',
+          fruitName: 'banana',
+          reasoning: 'Mostly yellow peel with a few freckles.',
+          ripenessBand: 'ripe',
+          ripenessScore: 6,
+          visibleSignals: ['yellow peel'],
+        },
+        history: [{ role: 'assistant', content: 'How would you like to refine these recipes?' }],
+        message: 'Make it under 30 minutes.',
+      }),
+    });
   });
 });

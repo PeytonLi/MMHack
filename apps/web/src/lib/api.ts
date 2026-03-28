@@ -2,6 +2,8 @@ import type {
   BackendRecipeResponse,
   FreshnessAnalysis,
   FreshnessMatchAnalysis,
+  RecipeAssistantMessage,
+  RecipeAssistantResponse,
   SupportedSku,
 } from '@/types/freshness';
 
@@ -20,7 +22,7 @@ function parseDataUrl(dataUrl: string): { base64: string; mimeType: string } {
   return { base64, mimeType };
 }
 
-function mapAnalysisForRecipeRequest(analysis: FreshnessMatchAnalysis) {
+function mapAnalysisForBackend(analysis: FreshnessMatchAnalysis) {
   return {
     status: 'ok' as const,
     confidence: analysis.confidence,
@@ -47,6 +49,9 @@ async function buildApiError(response: Response, fallbackPrefix: string): Promis
   }
 
   if (payload?.error === 'invalid_request') {
+    if (fallbackPrefix.includes('assistant')) {
+      return new Error('Recipe assistant could not process that request.');
+    }
     return new Error(
       fallbackPrefix.startsWith('Recipe')
         ? 'Recipe recommendations could not be loaded right now.'
@@ -113,7 +118,7 @@ export async function getRecipeRecommendations(
   const response = await fetch('/api/recipes', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ fruitName: sku, analysis: mapAnalysisForRecipeRequest(analysis) }),
+    body: JSON.stringify({ fruitName: sku, analysis: mapAnalysisForBackend(analysis) }),
   });
 
   if (!response.ok) {
@@ -121,4 +126,32 @@ export async function getRecipeRecommendations(
   }
 
   return response.json() as Promise<BackendRecipeResponse>;
+}
+
+/**
+ * POST /api/recipe-assistant
+ * Sends a grounded recipe assistant turn for the current scan context.
+ */
+export async function sendRecipeAssistantMessage(
+  sku: SupportedSku,
+  analysis: FreshnessMatchAnalysis,
+  history: RecipeAssistantMessage[],
+  message: string,
+): Promise<RecipeAssistantResponse> {
+  const response = await fetch('/api/recipe-assistant', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      fruitName: sku,
+      analysis: mapAnalysisForBackend(analysis),
+      history,
+      message,
+    }),
+  });
+
+  if (!response.ok) {
+    throw await buildApiError(response, 'Recipe assistant failed');
+  }
+
+  return response.json() as Promise<RecipeAssistantResponse>;
 }

@@ -77,4 +77,23 @@ export interface BackendRecipeMismatchResponse {
 
 export type BackendRecipeResponse = BackendRecipeSuccessResponse | BackendRecipeMismatchResponse;
 
+export interface RecipeAssistantMessage {
+  role: 'assistant' | 'user';
+  content: string;
+}
+
+export interface RecipeAssistantSuccessResponse {
+  status: 'ok';
+  reply: string;
+  recipes: BackendRecipe[];
+  appliedConstraints: string[];
+}
+
+export interface RecipeAssistantUnavailableResponse {
+  status: 'assistant_unavailable';
+  message: string;
+}
+
+export type RecipeAssistantResponse = RecipeAssistantSuccessResponse | RecipeAssistantUnavailableResponse;
+
 export type AppStep = 'select' | 'capture' | 'analyzing' | 'result';

@@ -13,6 +13,12 @@ type ApiErrorPayload = {
   retryAfterSeconds?: number;
 };
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
+
+function buildApiUrl(path: `/api/${string}`): string {
+  return API_BASE_URL ? `${API_BASE_URL}${path}` : path;
+}
+
 /**
  * Extracts the base64 data and MIME type from a data URL produced by canvas.toDataURL().
  */
@@ -72,8 +78,8 @@ export async function analyzeRipeness(
   imageDataUrl: string,
 ): Promise<FreshnessAnalysis> {
   const { base64, mimeType } = parseDataUrl(imageDataUrl);
-
-  const response = await fetch('/api/ripeness', {
+  const url = buildApiUrl('/api/ripeness');
+  const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ fruitName: sku, imageBase64: base64, mimeType }),
@@ -115,7 +121,8 @@ export async function getRecipeRecommendations(
   sku: SupportedSku,
   analysis: FreshnessMatchAnalysis,
 ): Promise<BackendRecipeResponse> {
-  const response = await fetch('/api/recipes', {
+  const url = buildApiUrl('/api/recipes');
+  const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ fruitName: sku, analysis: mapAnalysisForBackend(analysis) }),
@@ -138,7 +145,8 @@ export async function sendRecipeAssistantMessage(
   history: RecipeAssistantMessage[],
   message: string,
 ): Promise<RecipeAssistantResponse> {
-  const response = await fetch('/api/recipe-assistant', {
+  const url = buildApiUrl('/api/recipe-assistant');
+  const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "pnpm install",
+  "installCommand": "pnpm install --frozen-lockfile",
   "buildCommand": "pnpm --filter @mmhack/web build",
   "outputDirectory": "apps/web/dist",
   "framework": "vite",
@@ -18,7 +18,10 @@
     "api/index.ts": {
       "memory": 1024,
       "maxDuration": 30,
-      "includeFiles": "packages/**/*.ts,apps/api/src/**/*.ts"
+      "includeFiles": [
+        "apps/api/src/**/*.ts",
+        "packages/**/*.ts"
+      ]
     }
   }
 }

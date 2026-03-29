@@ -18,10 +18,7 @@
     "api/index.ts": {
       "memory": 1024,
       "maxDuration": 30,
-      "includeFiles": [
-        "apps/api/src/**/*.ts",
-        "packages/**/*.ts"
-      ]
+      "includeFiles": "{apps/api/src/**/*.ts,packages/**/*.ts}"
     }
   }
 }
